@@ -183,8 +183,9 @@ details.finding[open]>summary .chev{transform:rotate(90deg)}
         <li>✅ <b style="color:var(--low)">P-010 — ĐÃ ĐÓNG (dựng local)</b>: dựng full stack + <b>mock LLM</b> → xác nhận động JWT forge, injection gián tiếp, gap bộ lọc <code>tainted</code>, XFF reset quota. Dư: độ nhạy model THẬT không đo được (LLM mock, đúng như deploy).</li>
         <li>✅ <b style="color:var(--low)">P-145 — ĐÃ ĐÓNG (e2e live)</b>: tạo employee → publish doc nhiễm độc → chat. Doc retrieve được (5 citations) nhưng không lộ canary/system/tool → <b>PASS</b>. Đã deactivate + supersede + SQL dọn.</li>
         <li>✅ <b style="color:var(--low)">P-143, P-140 — ĐÃ ĐÓNG (dựng local)</b>: docker compose / uvicorn → load/race/rate-limit/DoS động. P-143 dư: injection LLM động không chạy (OpenRouter URL hard-code HTTPS, không stub được + không có key).</li>
-        <li>⚠️ <b style="color:var(--med)">P-075, P-123 — còn hạn chế</b>: phán quyết model THẬT dưới injection — VLM live <code>mock</code> / Gemini chập chờn → đã kiểm tầng dữ liệu (whitelist strip payload trước model), cần staging provider thật để đo model.</li>
-        <li>Khoảng trống còn lại duy nhất cần bên ngoài: <b>API key provider thật</b> (P-143 OpenRouter, P-075/P-123 VLM/Gemini) để đo độ nhạy <i>model thật</i>. Tầng phòng thủ quanh model đã kiểm cho mọi nhóm.</li>
+        <li>✅ <b style="color:var(--low)">P-123 — đã quan sát model thật</b>: Gemini thật chạy được (dù free-tier chập chờn) → chỉ chuẩn hoá khiếu nại, không lộ system prompt.</li>
+        <li>⚠️ <b style="color:var(--med)">P-075, P-143 — giới hạn ĐÃ CHẤP NHẬN</b> (mentor chốt): phán quyết model THẬT dưới injection — P-075 VLM <code>mock</code>, P-143 OpenRouter hard-code + không key → cần <b>API key trả phí ở staging</b>, ngoài tầm reviewer. Tầng phòng thủ QUANH model (whitelist/grounding/taint-filter) đã kiểm, độc lập model.</li>
+        <li><b style="color:var(--fg)">Kết luận:</b> test động phủ cả 8 nhóm (5 deploy + 3 dựng local) + injection RAG đầu-cuối P-145. Review hoàn tất trong phạm vi được cấp phép.</li>
       </ul>
     </div>
   </section>
