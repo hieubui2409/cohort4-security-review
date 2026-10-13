@@ -88,6 +88,11 @@
 - **IDOR/BFLA:** AN TOÀN — 2 tenant + 2 landlord, truy cập chéo đối tượng/chức năng đều 404/403/401 (xác nhận động, củng cố scan tĩnh).
 - **Upload:** fail-safe (mọi file độc/hỏng → 400/413, không 500/stacktrace). 1 ghi chú hardening (info): luồng landlord chỉ sniff magic-byte → polyglot lọt content-check (giảm nhẹ: bucket private + URL ký ngắn hạn).
 - **Write-load:** ramp 1→50 `POST /bookings` → **FINDING-08 (Low)**: lỗi serialization `P2034` bị gán nhầm thành `slot_taken` + không retry (409 giả tăng tới 48% ở c=25; không 5xx/sập). 181 bản ghi `SECTEST-` đã dọn sạch.
-- **Rào kỹ thuật CÒN LẠI (cụ thể, KHÔNG phải waiver model):** deposit happy-path cần trạng thái đa tác nhân (Viewing `CLOSING` + admin "system actor") → đánh giá tĩnh; eKYC trả 503 cứng không có cờ cấu hình; IDOR host↔host cần 2 Field Host do admin cấp. (IDOR cọc + auth webhook VietQR đã test động.)
+- **ĐÓNG NỐT 2026-10-14 (đợt 2, seed DB sâu):** cả 3 mục từng ghi "đánh giá tĩnh / cần admin cấp" nay **đã chạy ĐỘNG** bằng seed thẳng Postgres cô lập (đúng crypto app: scrypt + AES-GCM/HKDF) + bật kho PDF cục bộ:
+  - **IDOR host↔host:** AN TOÀN — 2 Field Host do-admin-cấp, hostB → ticket/viewing/inspection của hostA đều 404/409/403; không route nhận `hostId` từ client.
+  - **Deposit happy-path:** chạy trọn vẹn — createDeposit → webhook VietQR ký đúng `x-vietqr-secret` → `PAID_HOLDING` + escrow; IDOR deposit chéo tenant 404 / landlord 403; sai/thiếu secret → 401.
+  - **eKYC/hợp đồng hạ nguồn:** chạm tới bằng seed `IdentityVerification=VERIFIED` + `Contract` + `LEASE_PDF_LOCAL_DIR` → tải PDF hợp đồng niêm phong (qua giải mã KYC), authz an toàn, chéo tenant 404.
+  - **0 finding mới / 44 phép thử.**
+- **Rào kỹ thuật DUY NHẤT còn lại (cụ thể):** riêng bước gọi provider eKYC chính thức — `backend/src/modules/identity/identity.service.ts:24,34` ném `ekyc_provider_unavailable` (503) **vô điều kiện, không cờ env** → cần chữ ký/định danh FPT.AI thật xác minh phía ngoài, không mô phỏng được. Đây là **rào provider ngoài, KHÔNG phải lỗ hổng authz**; toàn bộ authz hạ nguồn đã test và an toàn.
 
 **P-143** còn lại: injection/system-prompt/cost-context ở tầng-model động cần OpenRouter key trả phí → nằm trong waiver model ở trên.

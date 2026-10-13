@@ -27,6 +27,8 @@ Tổng: **2 High, 2 Medium, 4 Low/Info** (F05 chat, F06 swagger, F07 token-cost,
 
 > **Cập nhật động 2026-10-14 (stub provider):** mục IDOR/BFLA được scan tĩnh đánh giá "an toàn" nay đã **XÁC NHẬN ĐỘNG** (2 tenant + 2 landlord, truy cập chéo đối tượng/chức năng đều bị chặn 404/403/401). Upload **fail-safe** (1 ghi chú hardening info). Load ghi phát sinh **FINDING-08**. Xem mục "Bổ sung: IDOR/BFLA + upload + write-load" cuối file và `evidences/EV-08`.
 
+> **Cập nhật động 2026-10-14 (seed DB + stub sâu):** 3 mục EV-08 còn để "chưa chạy động" nay đã **CHẠY ĐỘNG, đều AN TOÀN, KHÔNG phát sinh finding mới**: (1) **IDOR host↔host** — hostB không chạm được ticket/viewing/case thẩm định của hostA (404/409, kiểm soát dương: owner chạy được); (2) **Deposit happy-path** chạy trọn tới `PAID_HOLDING` (A15→A16 qua webhook ký đúng secret; sai/thiếu chữ ký →401) + **IDOR deposit** chặn (tenant khác 404, landlord 403); (3) **eKYC/A18** — luồng hợp đồng **hạ nguồn đã chạm tới & chạy** (tải được PDF hợp đồng 4 trang NIÊM PHONG, bỏ qua 503 provider nhờ seed `VERIFIED`+`Contract`+kho PDF cục bộ), authz an toàn (không ai ký/đọc/tải hợp đồng người khác). Rào còn lại: *bước gọi provider eKYC* (`identity.service.ts:34` 503 vô điều kiện) không mô phỏng được. Xem mục "Bổ sung: host↔host IDOR + deposit happy-path + eKYC" cuối file và `evidences/EV-09`.
+
 > Đã kiểm và XÁC NHẬN AN TOÀN (không tính là lỗ hổng, xem `evidences/EV-05`): handover controller (có guard + ownership, KHÁC với nghi vấn ban đầu), IDOR ở account/booking/landlord/host/inspection, SQL ($queryRaw tham số hóa), không SSRF/command injection, path-traversal đã chặn, JWT không chấp nhận alg "none", webhook VietQR dùng timingSafeEqual, tool LLM chỉ gọi endpoint công khai (không leo quyền).
 
 ---
@@ -362,3 +364,24 @@ Ramp (mỗi request slot duy nhất): tỉ lệ 409 ~3% (tuần tự) → 32% (c
 
 ### Bằng chứng
 - `evidences/EV-08_idor-bfla-upload-writeload.md` (mục 3) · `evidences/12_idor_bfla_upload_load_battery.json` (khối `load`).
+
+---
+
+## Bổ sung: host↔host IDOR + deposit happy-path + eKYC (động, seed DB + stub) — 2026-10-14
+
+Đóng 3 mục EV-08 còn để "chưa chạy động" (không thuộc waiver), bằng **seed thẳng Postgres cô lập** để vượt rào trạng
+thái/đa tác nhân, rồi chạy mọi khẳng định qua HTTP thật. Seed: `scripts/09_seed_host_deposit_ekyc.js`; tấn công:
+`scripts/09_host_idor_deposit_ekyc_battery.py`; máy chứng: `evidences/13_host_idor_deposit_ekyc_battery.json`; thuật lại
+đầy đủ: `evidences/EV-09_host-idor-deposit-ekyc.md`; teardown: `scripts/09_sectest_teardown.sql`. Stack cô lập: Postgres
+container `vinstay-p010-sectest2-pg:55432` + backend thật :4000; stub OTP echo, VietQR (secret tự đặt) + `DEMO_TOOLS`,
+eKYC provider 503 cứng nhưng hạ nguồn chạm tới nhờ seed `VERIFIED`+`Contract`+`LEASE_PDF_LOCAL_DIR`.
+
+| Mục | Kết quả động | Finding |
+|---|---|---|
+| **(1) IDOR host↔host** | **AN TOÀN.** hostB → ticket/viewing/case thẩm định của hostA: `accept/reject`→**404** `ticket_not_found`; `claim`→**409** (chỉ Open-Pool); 8 verb lifecycle `/host/viewings/<A>/*`→**404** `viewing_not_found` (`loadOwned` đòi ticket ACCEPTED của B); inspection `GET/door-code/submit`→**404** `inspection_not_found` (`assertCaseOwner`). Chiều ngược (hostA→B) cũng 404. `board` của hostB không lộ viewing của hostA. Owner tự chạy được (accept→CONFIRMED, receive→RECEIVING, GET case→200) ⇒ check không phải chặn mù. Không route nào nhận `hostId` từ client. | Không (kiểm soát dương) |
+| **(2) Deposit happy-path + IDOR** | **happy-path CHẠY TRỌN:** tenantA tạo deposit (`CLOSING`→`PENDING_PAYMENT`, 201) → webhook `x-vietqr-secret` **đúng** → `{"outcome":"paid"}`; DB xác minh `PAID_HOLDING` + `viewing/unit=HOLDING` + escrow `INBOUND_DEPOSIT 2tr`. **Webhook auth:** thiếu/sai secret → **401** `webhook_secret_invalid`; webhook giả khớp nội dung nhưng không secret → **401**. **IDOR:** tenantB (GET booking/terms/create/demo-pay trên ref của tenantA) → **404** `booking_not_found`; landlordB GET booking → **403** `forbidden`. Không có route deposit-theo-id phía tenant. | Không (kiểm soát dương) |
+| **(3) eKYC / hợp đồng (A18)** | **Luồng hạ nguồn CHẠM TỚI & chạy:** tenantA `GET /me/contracts`→200 (thấy hợp đồng seed); `GET /me/contracts/<id>/pdf`→**200 PDF 4 trang NIÊM PHONG** (sha256), **bỏ qua 503 provider** (render+seal nội bộ). **eKYC provider** vẫn **503** `ekyc_provider_unavailable` cho owner (stub cứng, không cờ); chéo tenant → **404** (ownership chạy trước 503). **IDOR/BFLA:** tenantB không thấy hợp đồng tenantA trong `/me/contracts`; tải PDF của tenantA → **404**; landlord vào `/me/contracts/:id/pdf` → **403**; handover chéo tenant → **403**. Không có trường tự do nào vào LLM; không có endpoint tenant-sign/landlord-sign (chữ ký = niêm phong PDF nội bộ). | Không (kiểm soát dương) |
+
+**Rào kỹ thuật thực sự còn lại (trung thực):** *bước gọi provider eKYC chính thức* — `backend/src/modules/identity/identity.service.ts:24,34` ném `ekyc_provider_unavailable` (503) **vô điều kiện, không cờ env**, cần chữ ký/định danh FPT.AI thật xác minh phía ngoài ⇒ không mô phỏng được. Do đó `Contract` chỉ sinh được bằng **seed** (không endpoint nào gọi `prisma.contract.create`; nơi duy nhất là A18 `identity.submit`, vốn 503). Đây là rào provider, KHÔNG phải lỗ hổng authz — mọi authz hạ nguồn đã test và an toàn.
+
+**Dọn dẹp:** `scripts/09_sectest_teardown.sql` chạy trong transaction (đếm `SECTEST-` còn lại = 0) + hủy container + xóa `backend/.env` test. `git status` repo app (`/P-010`) sạch.

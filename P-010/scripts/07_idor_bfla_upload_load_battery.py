@@ -27,7 +27,7 @@ ACCOUNTS = {
     "landlordA": ("sectest.landlordA@example.com", "landlord"),
     "landlordB": ("sectest.landlordB@example.com", "landlord"),
 }
-PASSWORD = "Sectest123!"
+PASSWORD = "<REDACTED_PASSWORD>"
 TOKENS = {}   # name -> vs_access jwt
 
 
