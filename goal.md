@@ -72,7 +72,7 @@
 - **Lưu ý an toàn khi public:** artifact công khai KHÔNG chứa mật khẩu thật, token, IP/exploit chạy được của hệ thống còn sống/chưa vá (P-136 còn Critical) — redact các chi tiết nhạy cảm trong bản public, giữ bản đầy đủ ở `./reviews/`.
 - **Quyết định thiết kế (chốt 2026-10-13):** style = **security report chuyên nghiệp** (nền tối, accent theo severity, card finding, chart SVG); **redact nhạy cảm** ở bản public; nội dung = **cả 8 nhóm có xếp hạng**; modal "Khuyến nghị" = **đếm ngược giả "đang mở khoá..." rồi vẫn khoá** + câu "Cả nhóm vui lòng tài trợ cho mentor 222.22$ (max 20x Claude) để xem phần này 😏". Có trích dẫn nguồn CWE/OWASP + biểu đồ SVG (phân bố severity, xếp hạng nhóm).
 
-## 9. Trạng thái hoàn thành & GIỚI HẠN ĐƯỢC CHẤP NHẬN (chốt 2026-10-13)
+## 9. Trạng thái hoàn thành & GIỚI HẠN ĐƯỢC CHẤP NHẬN (chốt 2026-10-13, cập nhật 2026-10-14)
 > Mục này cập nhật phạm vi §3 ("test động cho mọi nhóm có bề mặt tương ứng"): ghi nhận waiver mentor đã chấp nhận, để goal.md khớp thực tế. Chi tiết quyết định: `reviews/USER-DECISIONS.md`.
 
 **Đã phủ test ĐỘNG cho cả 8 nhóm:**
@@ -84,4 +84,10 @@
 
 **GIỚI HẠN ĐƯỢC MENTOR CHẤP NHẬN (waiver):** độ nhạy *nội tại* của model proprietary dưới injection cho **P-075** (VLM chạy `mock`) và **P-143** (OpenRouter URL hard-code HTTPS, không có key) **không đo được** vì cần API key trả phí ở staging — ngoài tầm reviewer. Toàn bộ **tầng phòng thủ QUANH model** (whitelist strip payload, grounding "references are data", taint-filter, screen chunk, ngưỡng similarity, gate chủ đề biến động) **đã kiểm cho mọi nhóm**. P-123 đã quan sát được model Gemini thật. **Mentor chấp nhận đây là giới hạn → review coi như HOÀN TẤT trong phạm vi được cấp phép.**
 
-**Lưu ý partial trong report subagent (đã ghi minh bạch ở README từng nhóm):** P-010 (IDOR/BFLA tenant, upload, trí nhớ đa lượt, load-ghi cần OTP/eKYC/VietQR provider thật → không chạy offline; IDOR đã scan tĩnh xác nhận an toàn); P-143 (injection/system-prompt/cost-context động cần OpenRouter key). Các mục này nằm trong waiver "cần key/credential provider thật" ở trên.
+**ĐÃ ĐÓNG thêm 2026-10-14 (sửa overclaim trước đó):** các mục P-010 từng ghi "partial / cần provider thật" (IDOR/BFLA tenant+host, upload robustness, write-load ghi) **KHÔNG thuộc waiver model** và nay **đã chạy ĐỘNG** bằng cách **stub OTP + VietQR** (cùng kỹ thuật mock LLM) trên bản dựng local (backend NestJS + Postgres cô lập):
+- **IDOR/BFLA:** AN TOÀN — 2 tenant + 2 landlord, truy cập chéo đối tượng/chức năng đều 404/403/401 (xác nhận động, củng cố scan tĩnh).
+- **Upload:** fail-safe (mọi file độc/hỏng → 400/413, không 500/stacktrace). 1 ghi chú hardening (info): luồng landlord chỉ sniff magic-byte → polyglot lọt content-check (giảm nhẹ: bucket private + URL ký ngắn hạn).
+- **Write-load:** ramp 1→50 `POST /bookings` → **FINDING-08 (Low)**: lỗi serialization `P2034` bị gán nhầm thành `slot_taken` + không retry (409 giả tăng tới 48% ở c=25; không 5xx/sập). 181 bản ghi `SECTEST-` đã dọn sạch.
+- **Rào kỹ thuật CÒN LẠI (cụ thể, KHÔNG phải waiver model):** deposit happy-path cần trạng thái đa tác nhân (Viewing `CLOSING` + admin "system actor") → đánh giá tĩnh; eKYC trả 503 cứng không có cờ cấu hình; IDOR host↔host cần 2 Field Host do admin cấp. (IDOR cọc + auth webhook VietQR đã test động.)
+
+**P-143** còn lại: injection/system-prompt/cost-context ở tầng-model động cần OpenRouter key trả phí → nằm trong waiver model ở trên.

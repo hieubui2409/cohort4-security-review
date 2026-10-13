@@ -195,7 +195,7 @@ details.finding[open]>summary .chev{transform:rotate(90deg)}
     <div class="sec-h"><h2>Giới hạn &amp; phần chưa hoàn thành</h2><span class="sub">minh bạch — phần lớn gap đã đóng bằng dựng local + e2e</span></div>
     <div class="panel">
       <ul style="margin:0;padding-left:18px;color:var(--muted);font-size:14px;line-height:1.7">
-        <li>✅ <b style="color:var(--low)">P-010 — ĐÃ ĐÓNG (dựng local)</b>: dựng full stack + <b>mock LLM</b> → xác nhận động JWT forge, injection gián tiếp, gap bộ lọc <code>tainted</code>, XFF reset quota. Dư: độ nhạy model THẬT không đo được (LLM mock, đúng như deploy).</li>
+        <li>✅ <b style="color:var(--low)">P-010 — ĐÃ ĐÓNG (dựng local + stub provider)</b>: dựng full stack + <b>mock LLM</b> + <b>stub OTP/VietQR</b> → xác nhận động: JWT forge chiếm admin, injection + gap <code>tainted</code>, XFF reset quota, <b>IDOR/BFLA AN TOÀN</b> (2 tenant + 2 landlord — chéo đối tượng/chức năng đều 404/403/401), <b>upload fail-safe</b>, và <b>FINDING-08</b> (slot_taken GIẢ dưới tải ghi đồng thời). Dư là <b>rào kỹ thuật cụ thể</b> (KHÔNG phải waiver model): deposit happy-path cần trạng thái đa tác nhân (Viewing CLOSING + admin system-actor) → đánh giá tĩnh; eKYC trả 503 cứng không có cờ cấu hình; IDOR host↔host cần 2 Field Host do admin cấp. Độ nhạy model THẬT không đo (LLM mock, đúng như deploy).</li>
         <li>✅ <b style="color:var(--low)">P-145 — ĐÃ ĐÓNG (e2e live)</b>: tạo employee → publish doc nhiễm độc → chat. Doc retrieve được (5 citations) nhưng không lộ canary/system/tool → <b>PASS</b>. Đã deactivate + supersede + SQL dọn.</li>
         <li>✅ <b style="color:var(--low)">P-143, P-140 — ĐÃ ĐÓNG (dựng local)</b>: docker compose / uvicorn → load/race/rate-limit/DoS động. P-143 dư: injection LLM động không chạy (OpenRouter URL hard-code HTTPS, không stub được + không có key).</li>
         <li>✅ <b style="color:var(--low)">P-123 — đã quan sát model thật</b>: Gemini thật chạy được (dù free-tier chập chờn) → chỉ chuẩn hoá khiếu nại, không lộ system prompt.</li>
@@ -273,10 +273,10 @@ const TEAMS=[
     exp:"Làm sai lệch báo cáo điều hành do AI sinh.",
     ref:"https://genai.owasp.org/llmrisk/llm01-prompt-injection/"}
   ]},
- {id:"P-010",name:"VinStay",method:"Scan + động local",link:"repo + dựng local",
-  counts:{Critical:0,High:2,Medium:3,Low:3,Info:0},
-  cat:{"Auth/Secret":"High","Agentic/LLM":"Medium","IDOR/Permission":"Info","Logic/Race":null,"DoS/Tải":"Low","Data integrity":"High"},
-  highlight:"JWT forge XÁC NHẬN ĐỘNG→chiếm admin; commit Chrome profile (cookie+mật khẩu thật); gap bộ lọc chỉ chạy khi tainted; FINDING-07 không trần token/chi phí",
+ {id:"P-010",name:"VinStay",method:"Scan + động local",link:"repo + dựng local (stub provider)",
+  counts:{Critical:0,High:2,Medium:2,Low:3,Info:1},
+  cat:{"Auth/Secret":"High","Agentic/LLM":"Medium","IDOR/Permission":"good","Logic/Race":"Low","DoS/Tải":"Low","Data integrity":"High"},
+  highlight:"JWT forge XÁC NHẬN ĐỘNG→chiếm admin; commit Chrome profile (cookie+mật khẩu thật); IDOR/BFLA AN TOÀN động (2 tenant+2 landlord); upload fail-safe; FINDING-08 slot_taken GIẢ dưới tải ghi; FINDING-07 không trần token",
   findings:[
    {t:"Giả mạo JWT phiên → chiếm quyền admin (XÁC NHẬN ĐỘNG)",sev:"High",cat:"Auth/Secret",code:"CWE-798 / CWE-321 · OWASP API2:2023",
     def:"Khi NODE_ENV≠production hoặc JWT_SECRET trống, khóa HMAC được suy ra CHỈ từ giá trị công khai trong repo (JWT_SECRET trống + AES mẫu đã commit) ⇒ ai đọc source đều tự ký token hợp lệ.",
@@ -295,17 +295,12 @@ const TEAMS=[
     def:".env.example điền sẵn AES_SECRET_KEY; chỉ kiểm độ dài ≥16, không chặn giá trị mẫu.",
     inp:"(scan code) resolveMasterSecret()",out:"Khóa con mã hóa PII sinh từ khóa mẫu",
     exp:"Nếu dùng lại ở prod thì PII giải mã được.",ref:"https://cwe.mitre.org/data/definitions/1392.html"},
-   {t:"Prompt injection gián tiếp (residual)",sev:"Medium",cat:"Agentic/LLM",code:"OWASP LLM01:2025",
-    def:"Bọc text listing trong <untrusted_listing_text> nhưng bộ lọc cứng chỉ 4 luật.",
-    inp:"(động local) listing nhiễm chèn link lừa đảo http://evil.example/pay (ngoài 4 regex)",out:"Link lừa đảo không bị chặn, tới người dùng (luật cứng I2 chặn được số khác)",
-    exp:"Injection khéo vượt bộ lọc; giảm nhẹ vì tool chỉ gọi endpoint công khai.",
-    ref:"https://genai.owasp.org/llmrisk/llm01-prompt-injection/"},
-   {t:"Gap: bộ lọc find_violations() chỉ chạy khi tainted (động)",sev:"Medium",cat:"Agentic/LLM",code:"OWASP LLM01:2025 · CWE-20",
-    def:"Bộ lọc hậu kiểm chỉ kích hoạt khi có kết quả tool chứa marker 'untrusted'. Câu trả lời vi phạm luật cứng nhưng KHÔNG sinh qua dữ liệu listing nhiễm thì không bị lọc.",
-    inp:"(động local) prompt jailbreak không đi qua dữ liệu listing",
-    out:"Câu trả lời vi phạm được phát thẳng, không qua find_violations()",
-    steps:["Dựng ai-engine local với mock LLM","Gửi prompt gây vi phạm luật cứng nhưng không tạo tool-call có marker untrusted","Quan sát: find_violations() không chạy → câu trả lời không bị lọc"],
-    impact:"Mọi jailbreak không đi qua listing đều lách tầng hậu kiểm — bộ lọc nên áp vô điều kiện lên câu trả lời cuối.",
+   {t:"Prompt injection gián tiếp (residual) + gap bộ lọc tainted",sev:"Medium",cat:"Agentic/LLM",code:"OWASP LLM01:2025 · CWE-20",
+    def:"Bọc text listing trong <untrusted_listing_text> nhưng bộ lọc cứng find_violations() CHỈ dò 4 luật, VÀ chỉ kích hoạt khi kết quả tool bị tainted ('untrusted'). Payload ngoài 4 regex — hoặc jailbreak không đi qua dữ liệu listing (tainted=false) — đều lọt.",
+    inp:"(động local, mock LLM) listing nhiễm chèn link lừa đảo http://evil.example/pay (ngoài 4 regex); + prompt vi phạm luật cứng KHÔNG qua dữ liệu listing",
+    out:"Link lừa đảo không bị chặn; câu trả lời vi phạm phát thẳng khi tainted=false (find_violations() không chạy)",
+    steps:["Dựng ai-engine local với mock LLM","Gửi listing nhiễm có link ngoài 4 regex → không bị chặn","Gửi prompt vi phạm luật cứng nhưng KHÔNG tạo tool-call có marker untrusted → find_violations() không chạy → phát thẳng"],
+    impact:"Injection khéo vượt bộ lọc; mọi jailbreak không qua listing lách tầng hậu kiểm. Giảm nhẹ: tool chỉ gọi endpoint công khai nên không leo thang quyền. Nên áp hậu kiểm VÔ ĐIỀU KIỆN lên câu trả lời cuối + allow-list.",
     ref:"https://genai.owasp.org/llmrisk/llm01-prompt-injection/"},
    {t:"/assistant/chat @Public + quota khách bypass bằng XFF (động)",sev:"Low",cat:"Agentic/LLM",code:"OWASP LLM07:2025 · API4",
     def:"Endpoint chat công khai, quota khách theo IP in-memory. Khi TRUST_PROXY=1 + backend lộ trực tiếp, xoay X-Forwarded-For reset được quota.",inp:"(động local) POST /assistant/chat, xoay X-Forwarded-For",
@@ -320,7 +315,14 @@ const TEAMS=[
     out:"6/6 = 200 (không cap chi phí); request trùng gọi mock đủ 5 lần (không cache LLM)",
     steps:["Dựng stack local + mock LLM đếm lần gọi","Gửi nhiều request lớn từ 1 tài khoản → quan sát không có trần","Gửi cùng 1 request 5 lần → mock bị gọi 5 lần (không cache đáp án)"],
     impact:"Người đã đăng nhập không có trần chi phí tích luỹ; mỗi truy vấn trùng tốn 1 suy luận trả phí. Giảm nhẹ: cap input 20×2000 + MAX_TOOL_ROUNDS=5 + throttle 20/60s + quota khách 2/24h.",
-    ref:"https://genai.owasp.org/llmrisk/llm10-unbounded-consumption/"}
+    ref:"https://genai.owasp.org/llmrisk/llm10-unbounded-consumption/"},
+   {t:"Booking ghi đồng thời báo slot_taken GIẢ (serialization gán nhầm, không retry) — động, stub provider",sev:"Low",cat:"Logic/Race",code:"CWE-667 / CWE-755 · OWASP API4:2023",
+    def:"createBooking chạy trong giao dịch Serializable; nhiều booking đồng thời cùng phân khu (khác căn/khác giờ) gây lỗi serialization Postgres (P2034). Code bắt P2034 rồi gán NHẦM thành lỗi nghiệp vụ 'slot_taken' và KHÔNG retry.",
+    inp:"(động local, stub OTP/VietQR) ramp 1→50 luồng POST /bookings, mỗi request một (unit,slot) DUY NHẤT",
+    out:"p99 ≤83ms, không 5xx/sập; nhưng tỉ lệ 409 slot_taken GIẢ tăng ~3%→48% (c=25); burst 12 luồng slot duy nhất → 7/12 báo slot_taken dù không trùng",
+    steps:["Dựng backend NestJS + Postgres cô lập; stub OTP (OTP_ECHO_DEV_CODE) + VietQR để qua luồng booking đầu-cuối","Bắn ramp 1→50 luồng POST /bookings, mỗi luồng một (unit,slot) duy nhất, tag SECTEST-","Quan sát tỉ lệ 409 slot_taken tăng theo mức đồng thời dù không trùng slot","Dọn 181 bản ghi SECTEST- (còn 0)"],
+    impact:"Sai nghiệp vụ (khách bị từ chối oan 'đã có người đặt') + suy giảm availability dưới tải ghi đồng thời cùng phân khu. Sửa: phân biệt P2034 vs trùng slot thật, retry có backoff, thu hẹp phạm vi Serializable.",
+    ref:"https://cwe.mitre.org/data/definitions/755.html"}
   ]},
  {id:"P-143",name:"OCR hoá đơn",method:"Scan + động local",link:"dựng local (docker compose)",
   counts:{Critical:0,High:0,Medium:3,Low:4,Info:3},
@@ -454,7 +456,7 @@ const TEAMS=[
 // battery matrix: p=pass, w=warn/partial, f=fail, n=n/a
 const BATTERY=[
  {id:"P-136",cells:["n","n","n","f","w","w","f"],note:"ingestion không auth/rate-limit; ghi sụp; race 5 ca"},
- {id:"P-010",cells:["w","p","w","p","n","w","w"],note:"dựng local + mock LLM: context stateless cap 20×2000 (tốt); FINDING-07 không trần token/chi phí + không cache đáp án (w); injection gián tiếp + gap bộ lọc tainted (w); throttle+quota OK; JWT forge chiếm admin (scan+động)."},
+ {id:"P-010",cells:["w","p","w","p","p","w","w"],note:"dựng local + mock LLM + stub provider: context cap 20×2000 (tốt); FINDING-07 không trần token + không cache (w); injection+gap tainted (w); throttle+quota OK; JWT forge chiếm admin; IDOR/BFLA AN TOÀN động (2 tenant+2 landlord, chéo đối tượng/chức năng 404/403/401); upload fail-safe (polyglot lọt magic-sniff, bucket private); FINDING-08 slot_taken giả dưới tải ghi (w)."},
  {id:"P-047",cells:["p","p","p","w","p","p","p"],note:"tốt; chat thiếu global throttle (user-key OK); load read+write êm, 429 backpressure"},
  {id:"P-075",cells:["p","p","p","p","p","p","p"],note:"chắc nhất; VLM whitelist, advisory lock"},
  {id:"P-123",cells:["p","p","p","f","p","p","w"],note:"rate-limit login fail ở live; perf N+1"},
@@ -627,6 +629,8 @@ const RECS=[
   {t:"Injection residual + gap bộ lọc tainted",sev:"Medium",fix:"Áp bộ lọc/hậu kiểm <b>vô điều kiện</b> lên câu trả lời cuối (không chỉ khi tainted); mở rộng ngoài 4 luật cứng bằng allow-list + LLM-judge/heuristic."},
   {t:"/assistant/chat quota bypass XFF",sev:"Low",fix:"Không tin X-Forwarded-For từ client; lấy IP từ proxy tin cậy; đặt quota theo tài khoản/phiên thay vì chỉ IP."},
   {t:"Thiếu kế toán token/chi phí (FINDING-07)",sev:"Low",fix:"Set <b>max_tokens</b> mỗi lượt; cộng dồn + giới hạn token/chi phí theo người dùng/phiên; cache đáp án cho truy vấn trùng; gắn danh tính người dùng vào ai-engine."},
+  {t:"FINDING-08: slot_taken giả khi ghi đồng thời",sev:"Low",fix:"Phân biệt lỗi serialization <b>P2034</b> với trùng slot thật: <b>retry có backoff</b> rồi mới trả lỗi; thu hẹp phạm vi giao dịch Serializable (khóa hàng/<code>SELECT…FOR UPDATE</code> trên đúng slot thay vì serialize cả đường điều phối theo phân khu); trả mã 'xung đột tạm thời, thử lại' thay vì slot_taken."},
+  {t:"Upload landlord chỉ sniff magic-byte (hardening)",sev:"Info",fix:"Đồng bộ luồng upload landlord với luồng inspection: đọc kích thước + giải mã ảnh thật để chặn polyglot, không chỉ kiểm magic-byte (hiện giảm nhẹ nhờ bucket private + URL ký ngắn hạn)."},
   {t:"Swagger /api/docs luôn bật",sev:"Info",fix:"Tắt /api/docs ở production (chỉ bật theo env dev)."}]},
  {id:"P-143",name:"OCR hoá đơn",items:[
   {t:"FINDING-09: injection gián tiếp qua trường hoá đơn → prompt đối soát",sev:"Medium",fix:"Tách mô tả/mã hàng người dùng (không tin cậy) khỏi chỉ dẫn trong `reconciliation/acl/gateway.py` — <b>delimiter + nhãn 'dữ liệu, không phải lệnh'</b>; cân nhắc hậu kiểm/LLM-judge. (Đường OCR hiện an toàn: vision, không nối chữ — mã OCR-injection cũ là code chết.)"},
@@ -662,8 +666,8 @@ function renderRecs(){
  document.getElementById('recs').innerHTML=
   `<div class="farewell">
      <h3>Cảm ơn cả nhà 💛</h3>
-     <p>Sắp đến lúc phải nói tạm biệt rồi. Cảm ơn các nhóm đã cho mình đồng hành review lần này — mỗi lỗ hổng tìm ra là một bước các bạn mạnh hơn.</p>
-     <p>Chúc mọi người <b>thành công trên đoạn đường sắp tới</b> — giữ vững tinh thần làm sản phẩm an toàn, và đừng bao giờ ngủ quên trên chiến thắng nhé.</p>
+     <p>Vậy là chặng đường Build Phase vừa qua trôi qua thật nhanh, sắp đến lúc tụi mình phải nói lời tạm biệt rồi. Cảm ơn các bạn đã cho mình cơ hội đồng hành — mỗi một lỗ hổng hay vấn đề tụi mình cùng nhau tìm ra đều là một bước đệm để các bạn trở nên vững vàng và trưởng thành hơn.</p>
+     <p>Chúc mọi người thật nhiều thành công trên những chặng đường sắp tới. Dù tương lai có đi đâu hay làm dự án nào, mong các bạn vẫn luôn giữ ngọn lửa đam mê và mang theo tinh thần làm ra những sản phẩm thật an toàn, chỉn chu nhé.</p>
      <div class="sig">Yêu G-03 ❤❤❤</div>
    </div>
    <div class="sec-h" style="margin-top:4px"><h2>Khuyến nghị khắc phục — chi tiết từng lỗ hổng</h2><span class="sub">theo nhóm · ưu tiên theo severity</span></div>

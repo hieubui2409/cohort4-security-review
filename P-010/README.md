@@ -21,8 +21,11 @@
 | FINDING-05 | /assistant/chat công khai: lộ system prompt + quota khách yếu | auth / llm | **Low** | OWASP LLM07 / API4:2023 |
 | FINDING-06 | Swagger `/api/docs` luôn bật, không chặn ở production | info-disclosure | **Low/Info** | CWE-200 |
 | FINDING-07 | Thiếu kế toán/giới hạn token-chi phí LLM theo người dùng/phiên (+ không cache đáp án) | resource-consumption | **Low** | CWE-770 / OWASP LLM10:2025 |
+| FINDING-08 | Lỗi `slot_taken` giả khi ghi booking đồng thời (serialization conflict bị gán nhầm + không retry) | reliability / availability | **Low** | CWE-667 / CWE-755 / API4:2023 |
 
-Tổng: **2 High, 2 Medium, 2 Low/Info.**
+Tổng: **2 High, 2 Medium, 4 Low/Info** (F05 chat, F06 swagger, F07 token-cost, F08 slot_taken).
+
+> **Cập nhật động 2026-10-14 (stub provider):** mục IDOR/BFLA được scan tĩnh đánh giá "an toàn" nay đã **XÁC NHẬN ĐỘNG** (2 tenant + 2 landlord, truy cập chéo đối tượng/chức năng đều bị chặn 404/403/401). Upload **fail-safe** (1 ghi chú hardening info). Load ghi phát sinh **FINDING-08**. Xem mục "Bổ sung: IDOR/BFLA + upload + write-load" cuối file và `evidences/EV-08`.
 
 > Đã kiểm và XÁC NHẬN AN TOÀN (không tính là lỗ hổng, xem `evidences/EV-05`): handover controller (có guard + ownership, KHÁC với nghi vấn ban đầu), IDOR ở account/booking/landlord/host/inspection, SQL ($queryRaw tham số hóa), không SSRF/command injection, path-traversal đã chặn, JWT không chấp nhận alg "none", webhook VietQR dùng timingSafeEqual, tool LLM chỉ gọi endpoint công khai (không leo quyền).
 
@@ -306,3 +309,56 @@ Chi tiết + input/output/thời gian/phân loại: `evidences/EV-07_context-cac
 **Phần vẫn chặn / ngoài phạm vi (không bịa):**
 - **Độ nhạy của model thật** với context/injection: LLM là mock ⇒ chỉ đo được LỚP QUẢN LÝ của app (số message gửi đi, số lần gọi, usage), không đo được model thật xử lý ngữ cảnh/nhớ ra sao. Đã được mentor waive.
 - **Kế toán token theo người dùng thật xuyên phiên**: app vốn vô trạng thái và ai-engine không có danh tính người dùng ⇒ không có dữ liệu per-user để đo; đây chính là nội dung FINDING-07 (thiếu cơ chế), không phải giới hạn đo đạc.
+
+---
+
+## Bổ sung: IDOR/BFLA + upload + write-load (động, stub provider) — 2026-10-14
+
+Mở lại các mục trước đây bị hoãn vì "luồng booking cần OTP/eKYC/VietQR provider thật" bằng cách **stub provider y như đã stub LLM**. Chỉ cần backend NestJS thật + Postgres cô lập (KHÔNG cần ai-engine). Dựng lại stack: container Postgres **riêng** `vinstay-p010-sectest-pg` (cổng 55432, không đụng project/container khác) + `node dist/main.js` với `backend/.env` cục bộ (đã gitignore). Stub: **OTP** qua `OTP_ECHO_DEV_CODE=true` (trả `devCode`), **VietQR** qua env `VIETQR_*` + `VIETQR_WEBHOOK_SECRET` tự đặt + `DEMO_TOOLS=true`, **eKYC** không stub được (503 cứng) nhưng vẫn chạy kiểm quyền trước khi chặn. Harness `python3 -I` ngoài repo, không import repo. Đã **dọn sạch hoàn toàn** sau khi xong (dừng service, xóa container + `.env`, xóa bản ghi `SECTEST-`); git tree repo app + repo review đều sạch.
+
+Script: `scripts/07_idor_bfla_upload_load_battery.py`, `scripts/08_sectest_teardown.sql`. Bằng chứng: `evidences/EV-08_idor-bfla-upload-writeload.md`, `evidences/12_idor_bfla_upload_load_battery.json`.
+
+| Mục | Kết quả động | Finding |
+|---|---|---|
+| **(1) IDOR/BFLA tenant & host** | **AN TOÀN — xác nhận động (bác bỏ nghi vấn, củng cố scan tĩnh).** tenantB truy cập booking/deposit/ekyc của tenantA ⇒ **404** (`loadOwned` theo `tenantId` phiên, giấu cả sự tồn tại). landlordB truy cập mandate của landlordA ⇒ **404** (GET/DELETE) / **403 NOT_OWNER** (pricing, kiểm `unit.landlordId` phiên). Chéo chức năng (tenant→admin/landlord/host; landlord→booking/admin/host) đều **403**; chưa đăng nhập **401**. `landlordId`/`hostId` luôn lấy từ phiên, bỏ qua query/body giả. | Không (kiểm soát dương) |
+| **(2) Upload robustness** | **FAIL-SAFE.** File độc/hỏng (sai magic, rỗng, >3MB, polyglot, GIF giả png, sai field, >8 file) ⇒ **400/413** sạch; ảnh hợp lệ ⇒ **503** (Supabase cố ý chưa cấu hình cục bộ; prod sẽ 201) — **không 500, không stacktrace, không ghi ra ngoài**. Path-traversal tên file vô hại: đường dẫn lưu do server tự sinh UUID, tên file chỉ để hiển thị. | Ghi chú hardening (info): luồng **landlord** chỉ sniff magic-byte, KHÔNG đọc kích thước/giải mã ảnh như luồng **inspection** ⇒ polyglot lọt qua content-check (lưu vào bucket private, URL ký ngắn hạn). Khuyến nghị thêm kiểm header/kích thước + re-encode. |
+| **(3) Write-load SECTEST-** | Ramp 1→50 luồng ghi `POST /bookings` (mỗi request một `(unit,slot)` **duy nhất**). Latency tốt, **không 5xx/sập** (p99 ≤83ms tới c=25). Nhưng tỉ lệ **`409 slot_taken` GIẢ** tăng theo đồng thời: ~3%→**48%** (c=25); burst 12 luồng slot duy nhất ⇒ **7/12 báo slot_taken** dù không hề trùng slot. 181 bản ghi `SECTEST-` đã dọn sạch (0 còn lại). | **FINDING-08** (Low) |
+
+### Phần vẫn bị chặn (lý do kỹ thuật cụ thể, không bịa)
+- **Deposit happy-path (A15 tạo cọc + báo có):** `createDeposit` đòi `Viewing` ở trạng thái `CLOSING` — chỉ đạt được khi **Field Host đã được Admin cấp** dẫn dắt lượt xem qua RFID/mở cửa/bắt đầu cọc; và webhook `markPaid` cần **tài khoản Admin "system actor"** trong DB (`system_actor_unavailable`). VietQR *provider* stub được (ta sở hữu secret), nhưng ghi cọc đầu-cuối bị chặn bởi **trạng thái đa tác nhân**, không phải credential provider. Đã test động **IDOR cọc** (chéo→404) và **auth webhook** (sai secret→401, đúng→qua auth); happy-path đánh giá tĩnh.
+- **eKYC/hợp đồng (A18):** `identity.service` chặn cứng 503, không có cờ cấu hình ⇒ luồng ký hợp đồng phía sau không chạy được. Cổng sở hữu (`loadOwned`) vẫn test động (chéo→404).
+- **IDOR host↔host (host đọc ticket/ca của host khác):** cần 2 Field Host do Admin cấp + ticket đã nhận. Đã test động BFLA host (không-phải-host→403); kiểm sở hữu ca (`HostActorService.resolve(phiên)` + `assertCaseOwner`, không nhận `hostId` từ client) đánh giá tĩnh.
+
+---
+
+## [P-010] FINDING-08: Booking ghi đồng thời báo `slot_taken` GIẢ (serialization conflict bị gán nhầm + không retry)
+
+- **Phân loại / Category:** reliability / availability (concurrency correctness)
+- **Mã định danh:** CWE-667 (Improper Locking) · CWE-755 (Improper Handling of Exceptional Conditions) · OWASP API4:2023 Unrestricted Resource Consumption (khía cạnh availability). *Định nghĩa ngắn:* lỗi serialization của giao dịch `Serializable` bị bắt và gán nhầm thành lỗi nghiệp vụ, không thử lại ⇒ các thao tác ghi độc lập, đồng thời thất bại oan. Ref: https://cwe.mitre.org/data/definitions/755.html
+- **Mức độ / Severity:** Low (không lộ/hỏng dữ liệu; suy giảm tính sẵn sàng + thông báo lỗi sai dưới tải ghi đồng thời trong cùng phân khu).
+- **Thời gian phát hiện:** 2026-10-14 (+07)
+- **Link/endpoint:** `POST /api/v1/bookings`
+- **File:line:** `backend/src/modules/booking/booking.service.ts` — `createBooking()` (giao dịch `isolationLevel: 'Serializable'` bọc `assigner.offer`), `isSerializationConflict()` (bắt `P2034`) → `throw new ConflictException({code:'slot_taken'})`.
+
+### Mô tả
+`createBooking` tạo `Viewing` và chạy `DispatchAssignerService.offer` trong một giao dịch `Serializable`. Nhiều booking đồng thời trong **cùng phân khu** (dù khác căn/khác khung giờ) đụng các dòng dùng chung ở bước điều phối ⇒ Postgres trả lỗi serialization (`40001`, Prisma `P2034`). Code bắt `P2034` qua `isSerializationConflict()` và **gán nhầm** thành lỗi nghiệp vụ `slot_taken` ("Khung giờ này vừa có người đặt xem phòng"), và **không có retry/backoff**.
+
+### Input/Output (bằng chứng động)
+```
+# 12 request đồng thời, mỗi request một (unit,slot) ĐẢM BẢO DUY NHẤT, cùng zone "The Sapphire 1"
+codes: Counter({409: 7, 201: 5})
+409 {"statusCode":409,"code":"slot_taken","message":"Khung giờ này vừa có người đặt xem phòng."}  # x7 — KHÔNG hề trùng slot
+```
+Ramp (mỗi request slot duy nhất): tỉ lệ 409 ~3% (tuần tự) → 32% (c=5) → 38% (c=10) → **48% (c=25)**. Không có 500/timeout; backend không sập.
+
+### Tác động
+- **Sai nghiệp vụ:** phần lớn booking hợp lệ, đồng thời bị từ chối với thông báo "đã có người đặt" sai sự thật ⇒ khách mất lịch oan, khó debug.
+- **Availability/DoS-nhẹ:** lưu lượng ghi đồng thời trong một phân khu (cao điểm thật, hoặc kẻ xấu cố tình bắn song song) làm sập tỉ lệ thành công của mọi người trong phân khu đó.
+
+### Khuyến nghị sửa
+- Phân biệt lỗi serialization (`P2034`) với trùng slot thật: với `P2034` hãy **retry có backoff** một số lần rồi mới trả lỗi; chỉ trả `slot_taken` khi re-check thực sự thấy viewing trùng.
+- Thu hẹp phạm vi giao dịch `Serializable` (tách bước điều phối ra ngoài, hoặc dùng khóa hàng/`SELECT ... FOR UPDATE` hẹp trên đúng slot thay vì serialize cả đường điều phối theo phân khu).
+- Trả mã lỗi "xung đột tạm thời, thử lại" riêng khi hết số lần retry, thay vì `slot_taken`.
+
+### Bằng chứng
+- `evidences/EV-08_idor-bfla-upload-writeload.md` (mục 3) · `evidences/12_idor_bfla_upload_load_battery.json` (khối `load`).
