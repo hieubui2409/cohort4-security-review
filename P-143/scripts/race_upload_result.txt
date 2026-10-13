@@ -1,0 +1,13 @@
+# concurrent duplicate-upload race N= 10 23:16:50 +0700
+distinct NEW invoice_ids (duplicate_of null): 1 {'01a1360d-6675-713f-bc8b-0c2a38e38061'}
+status counts: {409: 9, 202: 1}
+   0 http=202 inv=01a1360d-6675-713f-bc8b-0c2a38e38061 dup_of=None err=None
+   1 http=409 inv=None dup_of=None err=DUPLICATE_UPLOAD
+   2 http=409 inv=None dup_of=None err=DUPLICATE_UPLOAD
+   3 http=409 inv=None dup_of=None err=DUPLICATE_UPLOAD
+   4 http=409 inv=None dup_of=None err=DUPLICATE_UPLOAD
+   5 http=409 inv=None dup_of=None err=DUPLICATE_UPLOAD
+   6 http=409 inv=None dup_of=None err=DUPLICATE_UPLOAD
+   7 http=409 inv=None dup_of=None err=DUPLICATE_UPLOAD
+   8 http=409 inv=None dup_of=None err=DUPLICATE_UPLOAD
+   9 http=409 inv=None dup_of=None err=DUPLICATE_UPLOAD

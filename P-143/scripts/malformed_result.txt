@@ -1,0 +1,28 @@
+===== xxe.xml =====
+{"batch_id":"01a1360c-6073-7de5-b287-8a89e9f12dfa","batch":{"id":"01a1360c-6073-7de5-b287-8a89e9f12dfa","status":"PROCESSING","total_files":1,"processed_files":0,"failed_files":0,"created_at":"2026-10-13T16:15:43.219354Z","updated_at":"2026-10-13T16:15:43.219354Z","source":"UPLOAD"},"files":[{"file_name":"xxe.xml","invoice_id":"01a1360c-6073-7de7-97f3-d8cd8c1675bc","duplicate_of":null,"file_id":null,"error":null}]}
+HTTP:202 time:0.029858s
+
+===== billion.xml =====
+{"batch_id":"01a1360c-609d-760a-9ce1-c70321c13ce5","batch":{"id":"01a1360c-609d-760a-9ce1-c70321c13ce5","status":"PROCESSING","total_files":1,"processed_files":0,"failed_files":0,"created_at":"2026-10-13T16:15:43.261622Z","updated_at":"2026-10-13T16:15:43.261622Z","source":"UPLOAD"},"files":[{"file_name":"billion.xml","invoice_id":"01a1360c-609d-760c-b8af-eeab7c2a3850","duplicate_of":null,"file_id":null,"error":null}]}
+HTTP:202 time:0.023099s
+
+===== truncated.xml =====
+{"batch_id":"01a1360c-60be-7f56-838f-b4b6397b2121","batch":{"id":"01a1360c-60be-7f56-838f-b4b6397b2121","status":"PROCESSING","total_files":1,"processed_files":0,"failed_files":0,"created_at":"2026-10-13T16:15:43.294089Z","updated_at":"2026-10-13T16:15:43.294089Z","source":"UPLOAD"},"files":[{"file_name":"truncated.xml","invoice_id":"01a1360c-60be-7f58-ab59-8df516762158","duplicate_of":null,"file_id":null,"error":null}]}
+HTTP:202 time:0.024063s
+
+===== empty.xml =====
+{"batch_id":null,"batch":null,"files":[{"file_name":"empty.xml","invoice_id":null,"duplicate_of":null,"file_id":null,"error":"File rỗng."}]}
+HTTP:202 time:0.014117s
+
+===== corrupt.pdf =====
+{"batch_id":null,"batch":null,"files":[{"file_name":"corrupt.pdf","invoice_id":null,"duplicate_of":null,"file_id":null,"error":"Không đọc được file: PDF hỏng hoặc có mật khẩu."}]}
+HTTP:202 time:0.012399s
+
+===== fake.xml =====
+{"batch_id":"01a1360c-610a-7213-bfb8-90398d34dc74","batch":{"id":"01a1360c-610a-7213-bfb8-90398d34dc74","status":"PROCESSING","total_files":1,"processed_files":0,"failed_files":0,"created_at":"2026-10-13T16:15:43.370003Z","updated_at":"2026-10-13T16:15:43.370003Z","source":"UPLOAD"},"files":[{"file_name":"fake.xml","invoice_id":"01a1360c-610a-7215-9c4c-a3c61a821ce0","duplicate_of":null,"file_id":null,"error":null}]}
+HTTP:202 time:0.017676s
+
+===== huge.xml =====
+{"batch_id":"01a1360c-6156-7e09-8c07-5eccdfc3744f","batch":{"id":"01a1360c-6156-7e09-8c07-5eccdfc3744f","status":"PROCESSING","total_files":1,"processed_files":0,"failed_files":0,"created_at":"2026-10-13T16:15:43.446823Z","updated_at":"2026-10-13T16:15:43.446823Z","source":"UPLOAD"},"files":[{"file_name":"huge.xml","invoice_id":"01a1360c-6156-7e0b-b4da-7de31a34a87f","duplicate_of":null,"file_id":null,"error":null}]}
+HTTP:202 time:0.064933s
+

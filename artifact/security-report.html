@@ -1,0 +1,580 @@
+<title>Cohort 4 Security Review</title>
+<meta name="description" content="Báo cáo rà soát bảo mật 8 nhóm AI20K Build Phase Cohort 4">
+<style>
+/* Layout: báo cáo pentest một trang — hero tóm tắt, biểu đồ SVG, xếp hạng, thẻ finding, phần khuyến nghị khoá */
+:root{
+  --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a323d;
+  --fg:#e6edf3; --muted:#9aa7b4; --faint:#6b7784;
+  --accent:#4da3ff; --accentdim:#1f3b57;
+  --crit:#ff4d4f; --high:#ff8c42; --med:#e8c547; --low:#49c17a; --info:#5aa9e6; --good:#49c17a;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --bg:#f3f5f8; --panel:#ffffff; --panel2:#eef1f5; --line:#dde3ea;
+  --fg:#15202b; --muted:#53606d; --faint:#8a97a4; --accentdim:#d6e6fa; color-scheme:light;
+}}
+:root[data-theme="light"]{
+  --bg:#f3f5f8; --panel:#ffffff; --panel2:#eef1f5; --line:#dde3ea;
+  --fg:#15202b; --muted:#53606d; --faint:#8a97a4; --accentdim:#d6e6fa; color-scheme:light;
+}
+:root[data-theme="dark"]{color-scheme:dark}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark}}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding-block:28px;padding-inline:16px}
+h1,h2,h3{text-wrap:balance;line-height:1.2;margin:0}
+a{color:var(--accent)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.hero{display:flex;flex-direction:column;gap:14px;padding:26px;border:1px solid var(--line);border-radius:16px;
+  background:radial-gradient(120% 140% at 0% 0%,var(--accentdim),transparent 60%),var(--panel)}
+.hero h1{font-size:clamp(26px,5vw,42px);font-weight:800;letter-spacing:-.02em}
+.hero p{color:var(--muted);max-width:60ch;margin:0}
+.statrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:6px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px}
+.stat .n{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.stat .l{font-size:12px;color:var(--muted);margin-top:6px}
+section{margin-top:34px}
+.sec-h{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.sec-h h2{font-size:22px;font-weight:700}
+.sec-h .sub{color:var(--faint);font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.panel h3{font-size:14px;color:var(--muted);font-weight:600;margin-bottom:12px;letter-spacing:.02em}
+svg{max-width:100%;display:block}
+table{width:100%;border-collapse:collapse;font-size:14px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);background:var(--panel2)}
+td{color:var(--fg)}
+tr:last-child td{border-bottom:none}
+.rank{font-family:var(--mono);font-weight:700;color:var(--faint)}
+.bar{height:9px;border-radius:5px;background:var(--panel2);overflow:hidden;display:flex;min-width:120px}
+.bar span{height:100%}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;font-family:var(--mono)}
+.b-crit{background:rgba(255,77,79,.16);color:var(--crit);border:1px solid rgba(255,77,79,.4)}
+.b-high{background:rgba(255,140,66,.15);color:var(--high);border:1px solid rgba(255,140,66,.4)}
+.b-med{background:rgba(232,197,71,.15);color:var(--med);border:1px solid rgba(232,197,71,.4)}
+.b-low{background:rgba(73,193,122,.14);color:var(--low);border:1px solid rgba(73,193,122,.4)}
+.b-info{background:rgba(90,169,230,.14);color:var(--info);border:1px solid rgba(90,169,230,.4)}
+.b-good{background:rgba(73,193,122,.14);color:var(--good);border:1px solid rgba(73,193,122,.4)}
+.teamcard{background:var(--panel);border:1px solid var(--line);border-left-width:4px;border-radius:12px;padding:16px;margin-bottom:14px}
+.teamcard h3{font-size:17px;color:var(--fg);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.teamcard .meta{font-size:12px;color:var(--faint);font-family:var(--mono);margin-top:3px;word-break:break-all}
+.finding{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+.finding .ftitle{font-weight:700;font-size:14px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.finding .k{font-size:13px;color:var(--muted);margin-top:6px}
+.finding code,.io{font-family:var(--mono);font-size:12px}
+.io{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:6px;overflow-x:auto;white-space:pre-wrap;word-break:break-word;color:var(--muted)}
+.cite{font-size:12px;color:var(--faint)}
+.cite b{color:var(--muted)}
+.pill{font-family:var(--mono);font-size:11px;color:var(--faint);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+details.team>summary{cursor:pointer;list-style:none}
+details.team>summary::-webkit-details-marker{display:none}
+details.team>summary .chev{margin-left:auto;color:var(--faint);transition:transform .2s}
+details.team[open]>summary .chev{transform:rotate(90deg)}
+details.finding{border-top:1px solid var(--line);margin-top:10px;padding-top:10px}
+details.finding>summary{list-style:none;cursor:pointer;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-weight:700;font-size:14px}
+details.finding>summary::-webkit-details-marker{display:none}
+details.finding>summary .chev{margin-left:auto;color:var(--faint);transition:transform .2s}
+details.finding[open]>summary .chev{transform:rotate(90deg)}
+.fblk{margin-top:9px}
+.flabel{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--faint);text-transform:uppercase;margin-bottom:3px}
+.fsteps{margin:4px 0 0 0;padding-left:20px;font-size:12.5px;color:var(--muted)}
+.fsteps li{margin:2px 0}
+.locked{position:relative;border:1px dashed var(--line);border-radius:14px;padding:30px 20px;text-align:center;background:
+  repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(255,140,66,.05) 10px,rgba(255,140,66,.05) 20px),var(--panel)}
+.btn{font-family:var(--sans);font-weight:700;font-size:15px;border:none;border-radius:10px;padding:12px 22px;cursor:pointer;
+  background:var(--accent);color:#05101c}
+.btn:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.modal{position:fixed;inset:0;background:rgba(5,8,12,.72);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+.modal.on{display:flex}
+.modalbox{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:440px;width:100%;padding:26px;text-align:center}
+.modalbox .em{font-size:52px;line-height:1}
+.modalbox h3{font-size:20px;margin:12px 0 8px}
+.modalbox p{color:var(--muted);margin:0 0 18px}
+.prog{height:10px;border-radius:6px;background:var(--panel2);overflow:hidden;margin:14px 0}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--high),var(--crit))}
+.foot{margin-top:40px;color:var(--faint);font-size:12px;border-top:1px solid var(--line);padding-top:16px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="hero">
+    <span class="eyebrow">AI20K · Build Phase · Cohort 4 — Security Review</span>
+    <h1>Rà soát bảo mật 8 nhóm</h1>
+    <p>Chấm động qua API trên bản deploy (5 nhóm có handoff) và scan mã nguồn (3 nhóm). Trọng tâm: lỗ hổng agentic (prompt injection, context, permission leak), phân quyền/IDOR, auth &amp; secret, logic/race, và chịu tải. Chi tiết nhạy cảm đã được che trong bản công khai.</p>
+    <div class="statrow" id="stats"></div>
+    <div class="cite">Ngày: 2026-10-13 · Bản đầy đủ (script tái hiện + bằng chứng) lưu nội bộ tại <code>./reviews/</code>.</div>
+  </header>
+
+  <section>
+    <div class="sec-h"><h2>Tổng quan mức độ</h2><span class="sub">phân bố severity toàn bộ findings</span></div>
+    <div class="grid2">
+      <div class="panel"><h3>Phân bố theo severity</h3><div id="donut"></div>
+        <div class="legend" id="donutlegend"></div></div>
+      <div class="panel"><h3>Số lỗ hổng theo nhóm</h3><div id="teambars"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Bảng xếp hạng rủi ro</h2><span class="sub">nặng → nhẹ</span></div>
+    <div class="tablewrap"><table id="ranktable">
+      <thead><tr><th>#</th><th>Nhóm</th><th>Cách chấm</th><th>Mức cao nhất</th><th>Phân bố</th><th>Điểm nổi bật</th></tr></thead>
+      <tbody></tbody></table></div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Heatmap: nhóm × loại lỗ hổng</h2><span class="sub">màu theo mức nặng nhất của loại đó ở mỗi nhóm</span></div>
+    <div class="panel" style="overflow-x:auto"><div id="heatmap"></div></div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Battery mở rộng — tất cả nhóm động</h2><span class="sub">chi phí/context · memory · cache · rate-limit · file độc hại · injection+lộ prompt · load/race</span></div>
+    <div class="tablewrap"><table id="batterytable">
+      <thead><tr><th>Nhóm</th><th>Chi phí/Input</th><th>Memory/Ctx</th><th>Cache</th><th>Rate-limit</th><th>File độc hại</th><th>Injection+Leak</th><th>Load/Race</th></tr></thead>
+      <tbody></tbody></table></div>
+    <div class="legend"><span><i class="dot" style="background:var(--good)"></i>PASS/phòng thủ tốt</span><span><i class="dot" style="background:var(--med)"></i>lưu ý/một phần</span><span><i class="dot" style="background:var(--crit)"></i>FAIL/lỗ hổng</span><span><i class="dot" style="background:var(--panel2)"></i>không áp dụng/không test được</span></div>
+    <p class="cite" style="margin-top:10px">Nhóm scan-only <b>P-143</b> (prompt injection gián tiếp qua OCR, context overflow; có cache theo tenant + theo dõi chi phí) và <b>P-140</b> (boilerplate — chưa có logic thật) được đánh giá battery từ <b>mã nguồn</b> vì không có deploy live. Chi tiết ở báo cáo nhóm.</p>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Sơ đồ tấn công tiêu biểu (P-136)</h2><span class="sub">2 chuỗi khai thác đã tái hiện trên hệ thống live</span></div>
+    <div class="grid2">
+      <div class="panel"><h3>Giả mạo JWT → chiếm ADMIN</h3><div id="flow-jwt"></div></div>
+      <div class="panel"><h3>Race TOCTOU → nhiều ca ACTIVE</h3><div id="flow-race"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Chịu tải (P-136)</h2><span class="sub">so sánh bề mặt đọc /health vs ghi /telemetry/gps</span></div>
+    <div class="grid2">
+      <div class="panel"><h3>Độ trễ /health theo concurrency (p50/p95/p99, ms)</h3><div id="loadchart"></div>
+        <div class="legend"><span><i class="dot" style="background:var(--info)"></i>p50</span><span><i class="dot" style="background:var(--high)"></i>p95</span><span><i class="dot" style="background:var(--crit)"></i>p99</span></div></div>
+      <div class="panel"><h3>Bề mặt GHI sụp dưới tải nhỏ</h3>
+        <div id="writebars"></div>
+        <p class="cite" style="margin-top:12px">Chỉ 40 request (concurrency 1) tới endpoint ghi <b>không xác thực</b> đã gây <b>82.5% timeout</b> (chỉ 7/40 thành công) do mỗi lần ghi gọi reverse-geocoding đồng bộ. Không rate-limit ⇒ ai cũng làm nghẽn đường ống telemetry.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Chi tiết theo nhóm</h2><span class="sub">bấm để mở — định nghĩa · input/output · khai thác · trích dẫn CWE/OWASP</span></div>
+    <div id="teamdetails"></div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Khuyến nghị khắc phục</h2><span class="sub">ưu tiên theo rủi ro</span></div>
+    <div class="locked">
+      <div style="font-size:40px">🔒</div>
+      <h3 style="margin:10px 0 6px">Phần khuyến nghị đã được bảo vệ</h3>
+      <p class="cite" style="max-width:48ch;margin:0 auto 16px">Nội dung khắc phục chi tiết dành cho các nhóm. Nhấn để mở khoá.</p>
+      <button class="btn" id="unlockbtn">🔓 Mở khoá phần Khuyến nghị</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Giới hạn &amp; phần chưa hoàn thành</h2><span class="sub">minh bạch — phần lớn gap đã đóng bằng dựng local + e2e</span></div>
+    <div class="panel">
+      <ul style="margin:0;padding-left:18px;color:var(--muted);font-size:14px;line-height:1.7">
+        <li>✅ <b style="color:var(--low)">P-010 — ĐÃ ĐÓNG (dựng local)</b>: dựng full stack + <b>mock LLM</b> → xác nhận động JWT forge, injection gián tiếp, gap bộ lọc <code>tainted</code>, XFF reset quota. Dư: độ nhạy model THẬT không đo được (LLM mock, đúng như deploy).</li>
+        <li>✅ <b style="color:var(--low)">P-145 — ĐÃ ĐÓNG (e2e live)</b>: tạo employee → publish doc nhiễm độc → chat. Doc retrieve được (5 citations) nhưng không lộ canary/system/tool → <b>PASS</b>. Đã deactivate + supersede + SQL dọn.</li>
+        <li>✅ <b style="color:var(--low)">P-143, P-140 — ĐÃ ĐÓNG (dựng local)</b>: docker compose / uvicorn → load/race/rate-limit/DoS động. P-143 dư: injection LLM động không chạy (OpenRouter URL hard-code HTTPS, không stub được + không có key).</li>
+        <li>⚠️ <b style="color:var(--med)">P-075, P-123 — còn hạn chế</b>: phán quyết model THẬT dưới injection — VLM live <code>mock</code> / Gemini chập chờn → đã kiểm tầng dữ liệu (whitelist strip payload trước model), cần staging provider thật để đo model.</li>
+        <li>Khoảng trống còn lại duy nhất cần bên ngoài: <b>API key provider thật</b> (P-143 OpenRouter, P-075/P-123 VLM/Gemini) để đo độ nhạy <i>model thật</i>. Tầng phòng thủ quanh model đã kiểm cho mọi nhóm.</li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mtitle">
+  <div class="modalbox">
+    <div class="em" id="memoji">⏳</div>
+    <h3 id="mtitle">Đang mở khoá…</h3>
+    <div class="prog"><i id="prog"></i></div>
+    <p id="mmsg">Đang xác thực quyền truy cập nội dung cao cấp…</p>
+    <button class="btn" id="mclose" hidden>Đóng</button>
+  </div>
+</div>
+
+<script>
+// ===== DỮ LIỆU FINDINGS (từ ./reviews — cập nhật khi có battery mở rộng) =====
+const SEV=["Critical","High","Medium","Low","Info"];
+const SEVC={Critical:"crit",High:"high",Medium:"med",Low:"low",Info:"info"};
+const CATS=["Auth/Secret","Agentic/LLM","IDOR/Permission","Logic/Race","DoS/Tải","Data integrity"];
+// mỗi nhóm: counts theo severity, catSev = mức nặng nhất mỗi category (hoặc null)
+const TEAMS=[
+ {id:"P-136",name:"DriverGuard",method:"API động",link:"deploy riêng (đã ẩn)",
+  counts:{Critical:2,High:3,Medium:2,Low:1,Info:0},
+  cat:{"Auth/Secret":"Critical","Agentic/LLM":"Medium","IDOR/Permission":"High","Logic/Race":"High","DoS/Tải":"High","Data integrity":"High"},
+  highlight:"Giả mạo JWT→ADMIN; MinIO default creds; ingestion không auth; BOLA; race 5 ca; DoS ghi",
+  findings:[
+   {t:"Giả mạo JWT → chiếm quyền ADMIN",sev:"Critical",cat:"Auth/Secret",code:"CWE-321 / CWE-798 · OWASP API2:2023",
+    def:"Khóa ký JWT (HS256) bị nhúng cứng trong mã nguồn; bản deploy không override ⇒ ai đọc source đều tự ký token hợp lệ.",
+    inp:"Bearer <JWT tự ký role=ADMIN, sub=usr_admin_0001, secret='driverguard-***'>",
+    out:"HTTP 200 — {role:ADMIN, permissions:['*']} (không cần đăng nhập)",
+    exp:"Tự ký token ADMIN → tạo user ADMIN mới (cửa hậu), đọc/xoá toàn bộ; 15/15 user lộ PII.",
+    ref:"https://cwe.mitre.org/data/definitions/321.html"},
+   {t:"MinIO dùng credential mặc định",sev:"Critical",cat:"Auth/Secret",code:"CWE-798 / CWE-1392 · OWASP A05:2021",
+    def:"Object storage mở ra Internet dùng tài khoản mặc định <REDACTED_MINIO_USER>:**** (hardcode trong config).",
+    inp:"S3 list_buckets() với default creds",
+    out:"OK → 98 object video dashcam tài xế (sinh trắc khuôn mặt) đọc/ghi/xoá được",
+    exp:"Đọc/xoá toàn bộ bằng chứng an toàn; rò rỉ dữ liệu sinh trắc.",
+    ref:"https://cwe.mitre.org/data/definitions/1392.html"},
+   {t:"Ingestion telemetry/alert không xác thực",sev:"High",cat:"IDOR/Permission",code:"CWE-306 · OWASP API2",
+    def:"Endpoint nhận GPS/cảnh báo an toàn không yêu cầu đăng nhập.",
+    inp:"POST /telemetry/gps (KHÔNG token) speed=999, label=PWNED",
+    out:"HTTP 200 — bản ghi giả được ghi nhận cho xe bất kỳ",
+    exp:"Bơm GPS/cảnh báo ngủ gật giả cho mọi xe → HITL giả, kỷ luật oan, che vi phạm thật.",
+    ref:"https://cwe.mitre.org/data/definitions/306.html"},
+   {t:"BOLA: xem GPS/lịch sử mọi xe",sev:"High",cat:"IDOR/Permission",code:"CWE-639 · OWASP API1:2023 BOLA",
+    def:"Endpoint lịch sử GPS chỉ cần đăng nhập, không kiểm xe có thuộc tài xế.",
+    inp:"driver1 → GET /telemetry/vehicles/{xe_người_khác}/history",
+    out:"HTTP 200 + điểm GPS của xe không thuộc tài xế",
+    exp:"Bất kỳ tài khoản nào theo dõi vị trí thời gian thực mọi xe/tài xế.",
+    ref:"https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/"},
+   {t:"DoS: bề mặt ghi sụp dưới tải nhỏ",sev:"High",cat:"DoS/Tải",code:"CWE-400 / CWE-770 · OWASP API4:2023",
+    def:"Mỗi lần ghi GPS gọi reverse-geocoding đồng bộ; endpoint không auth/không rate-limit.",
+    inp:"40 request (concurrency 1) tới /telemetry/gps",
+    out:"82.5% timeout — chỉ 7/40 thành công, p99=3.4s",
+    exp:"Lượng request nhỏ ẩn danh làm nghẽn toàn đường ống telemetry + lan sang endpoint khác.",
+    ref:"https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/"},
+   {t:"Race TOCTOU khi nhận ca/gán xe",sev:"High",cat:"Logic/Race",code:"CWE-362 / CWE-367",
+    def:"Kiểm tuần tự rồi mới INSERT, không khóa row/không unique constraint.",
+    inp:"12 request assign-vehicle song song (1 tài xế)",
+    out:"5 ca ACTIVE tạo đồng thời (đáng lẽ tối đa 1)",
+    exp:"Phá bất biến 1-tài-xế-1-ca; xe bị giao kép; sai số liệu vận hành.",
+    ref:"https://cwe.mitre.org/data/definitions/367.html"},
+   {t:"Prompt injection lưu trữ qua tên tài xế",sev:"Medium",cat:"Agentic/LLM",code:"OWASP LLM01:2025",
+    def:"Báo cáo điều hành nhúng thẳng full_name (do user đặt) vào prompt LLM.",
+    inp:"full_name = payload injection",
+    out:"Thao túng nội dung recommendations trong báo cáo AI",
+    exp:"Làm sai lệch báo cáo điều hành do AI sinh.",
+    ref:"https://genai.owasp.org/llmrisk/llm01-prompt-injection/"}
+  ]},
+ {id:"P-010",name:"VinStay",method:"Scan + động local",link:"repo + dựng local",
+  counts:{Critical:0,High:2,Medium:3,Low:2,Info:0},
+  cat:{"Auth/Secret":"High","Agentic/LLM":"Medium","IDOR/Permission":"Info","Logic/Race":null,"DoS/Tải":null,"Data integrity":"High"},
+  highlight:"JWT forge XÁC NHẬN ĐỘNG→chiếm admin; commit Chrome profile (cookie+mật khẩu thật); gap bộ lọc chỉ chạy khi tainted",
+  findings:[
+   {t:"Giả mạo JWT phiên → chiếm quyền admin (XÁC NHẬN ĐỘNG)",sev:"High",cat:"Auth/Secret",code:"CWE-798 / CWE-321 · OWASP API2:2023",
+    def:"Khi NODE_ENV≠production hoặc JWT_SECRET trống, khóa HMAC được suy ra CHỈ từ giá trị công khai trong repo (JWT_SECRET trống + AES mẫu đã commit) ⇒ ai đọc source đều tự ký token hợp lệ.",
+    inp:"Bearer/cookie <JWT tự ký role=admin> → GET /admin/field-hosts",
+    out:"Không token → 401; token giả → HTTP 200, truy cập dữ liệu admin (chiếm quyền)",
+    steps:["Dựng stack local; lấy các giá trị khóa công khai từ repo","Suy ra khóa ký và tự ký JWT phiên với role=admin","Gọi GET /admin/field-hosts bằng token giả (Bearer và cookie)","Quan sát: 200 + dữ liệu admin → chiếm quyền. Khôi phục khóa mạnh thì token giả bị 401 (bản vá chặn được)"],
+    impact:"Chiếm toàn quyền admin nếu deploy không ép NODE_ENV=production + JWT_SECRET thật. Đã xác nhận động trên bản dựng local.",
+    ref:"https://cwe.mitre.org/data/definitions/321.html"},
+   {t:"Commit nguyên Chrome profile (cookie + mật khẩu thật)",sev:"High",cat:"Data integrity",code:"CWE-312 / CWE-540 / CWE-359",
+    def:"1875 file dưới 'tech data/' bị git theo dõi: Cookies (Google/Facebook), Login Data (mật khẩu đã lưu), History.",
+    inp:"(scan code) tech data/.../Network/Cookies, Login Data",
+    out:"Credential + PII thật lộ vĩnh viễn trong lịch sử git",
+    exp:"Bất kỳ ai clone repo lấy được cookie phiên + mật khẩu lưu.",
+    ref:"https://cwe.mitre.org/data/definitions/312.html"},
+   {t:"Khóa gốc mẫu 'trông như thật'",sev:"Medium",cat:"Auth/Secret",code:"CWE-1392 / CWE-798",
+    def:".env.example điền sẵn AES_SECRET_KEY; chỉ kiểm độ dài ≥16, không chặn giá trị mẫu.",
+    inp:"(scan code) resolveMasterSecret()",out:"Khóa con mã hóa PII sinh từ khóa mẫu",
+    exp:"Nếu dùng lại ở prod thì PII giải mã được.",ref:"https://cwe.mitre.org/data/definitions/1392.html"},
+   {t:"Prompt injection gián tiếp (residual)",sev:"Medium",cat:"Agentic/LLM",code:"OWASP LLM01:2025",
+    def:"Bọc text listing trong <untrusted_listing_text> nhưng bộ lọc cứng chỉ 4 luật.",
+    inp:"(động local) listing nhiễm chèn link lừa đảo http://evil.example/pay (ngoài 4 regex)",out:"Link lừa đảo không bị chặn, tới người dùng (luật cứng I2 chặn được số khác)",
+    exp:"Injection khéo vượt bộ lọc; giảm nhẹ vì tool chỉ gọi endpoint công khai.",
+    ref:"https://genai.owasp.org/llmrisk/llm01-prompt-injection/"},
+   {t:"Gap: bộ lọc find_violations() chỉ chạy khi tainted (động)",sev:"Medium",cat:"Agentic/LLM",code:"OWASP LLM01:2025 · CWE-20",
+    def:"Bộ lọc hậu kiểm chỉ kích hoạt khi có kết quả tool chứa marker 'untrusted'. Câu trả lời vi phạm luật cứng nhưng KHÔNG sinh qua dữ liệu listing nhiễm thì không bị lọc.",
+    inp:"(động local) prompt jailbreak không đi qua dữ liệu listing",
+    out:"Câu trả lời vi phạm được phát thẳng, không qua find_violations()",
+    steps:["Dựng ai-engine local với mock LLM","Gửi prompt gây vi phạm luật cứng nhưng không tạo tool-call có marker untrusted","Quan sát: find_violations() không chạy → câu trả lời không bị lọc"],
+    impact:"Mọi jailbreak không đi qua listing đều lách tầng hậu kiểm — bộ lọc nên áp vô điều kiện lên câu trả lời cuối.",
+    ref:"https://genai.owasp.org/llmrisk/llm01-prompt-injection/"},
+   {t:"/assistant/chat @Public + quota khách bypass bằng XFF (động)",sev:"Low",cat:"Agentic/LLM",code:"OWASP LLM07:2025 · API4",
+    def:"Endpoint chat công khai, quota khách theo IP in-memory. Khi TRUST_PROXY=1 + backend lộ trực tiếp, xoay X-Forwarded-For reset được quota.",inp:"(động local) POST /assistant/chat, xoay X-Forwarded-For",
+    out:"Deploy: ai-engine 503 (chưa cấu hình key). Local (mock LLM): throttle 429 + body-limit 413 OK; XFF reset quota khi lộ sau proxy",
+    exp:"Nếu nối LLM thật + lộ trực tiếp: lạm dụng quota/chi phí. Độ nhạy model thật chưa đo (LLM mock).",ref:"https://genai.owasp.org/"},
+   {t:"Swagger /api/docs bật vô điều kiện",sev:"Info",cat:"Auth/Secret",code:"CWE-200",
+    def:"Tài liệu API mở ở mọi môi trường.",inp:"(scan code)",out:"Lộ bề mặt API",
+    exp:"Hỗ trợ trinh sát.",ref:"https://cwe.mitre.org/data/definitions/200.html"}
+  ]},
+ {id:"P-143",name:"OCR hoá đơn",method:"Scan + động local",link:"dựng local (docker compose)",
+  counts:{Critical:0,High:1,Medium:2,Low:4,Info:2},
+  cat:{"Auth/Secret":"Medium","Agentic/LLM":"High","IDOR/Permission":"Info","Logic/Race":null,"DoS/Tải":"Medium","Data integrity":null},
+  highlight:"Prompt injection gián tiếp qua OCR (tĩnh); context overflow; /auth/login không rate-limit + lockout không atomic (12/15 lọt)",
+  findings:[
+   {t:"Prompt injection gián tiếp qua OCR/PDF",sev:"High",cat:"Agentic/LLM",code:"OWASP LLM01:2025",
+    def:"Văn bản OCR/PDF người dùng upload nối thẳng vào user-prompt LLM, không rào/khử.",
+    inp:"(scan code) llm_strategies.py nối text OCR",out:"Chỉ dẫn nhúng trong hoá đơn điều khiển LLM",
+    exp:"Thao túng trích xuất; tiền đề cho sai lệch nghiệp vụ.",ref:"https://genai.owasp.org/llmrisk/llm01-prompt-injection/"},
+   {t:"Context overflow / tiêu thụ không giới hạn",sev:"Medium",cat:"DoS/Tải",code:"OWASP LLM10:2025",
+    def:"Chữ mọi trang nối 1 prompt, không giới hạn input.",inp:"(scan code)",out:"Prompt phình theo tài liệu",
+    exp:"Đốt token/chi phí; có thể DoS.",ref:"https://genai.owasp.org/"},
+   {t:"/auth/login không rate-limit + lockout không atomic (động)",sev:"Medium",cat:"Auth/Secret",code:"CWE-307 / CWE-367 · OWASP API4",
+    def:"Không có rate-limit tầng ứng dụng ở /auth/login; bộ đếm thất bại cho cơ chế lockout không atomic (TOCTOU) — nhóm tự thừa nhận trong iam/README.",
+    inp:"(động local) 120 login nhanh + 15 login sai đồng thời",
+    out:"120 login → 0×429 (không chặn); 15 login sai đồng thời → 12/15 lọt qua ngưỡng 5 trước khi lockout kích hoạt",
+    steps:["Dựng full stack docker compose","Bắn 120 request /auth/login liên tiếp → đếm mã 429 (0)","Bắn 15 login sai ĐỒNG THỜI cho 1 tài khoản","Quan sát: 12/15 vượt ngưỡng 5-lần trước khi lockout chốt"],
+    impact:"Khuếch đại brute-force có giới hạn; cần rate-limit + bộ đếm atomic (khóa/CAS).",
+    ref:"https://cwe.mitre.org/data/definitions/307.html"},
+   {t:"Secret/infra mặc định (JWT change-me, DB/MinIO default)",sev:"Low",cat:"Auth/Secret",code:"CWE-798 / CWE-1392",
+    def:"JWT_SECRET='change-me' (có guard prod), DB postgres:postgres, MinIO default trong compose.",
+    inp:"(scan code) compose/env",out:"Mặc định yếu nếu không override",
+    exp:"Chiếm phiên/hạ tầng nếu lên prod nguyên trạng.",ref:"https://cwe.mitre.org/data/definitions/798.html"},
+   {t:"XXE / XML-bomb: fail-safe (xác nhận động)",sev:"Info",cat:"Data integrity",code:"CWE-611 (đã phòng)",
+    def:"Upload XML độc (external entity + billion-laughs) để thử lộ /etc/passwd hoặc DoS.",
+    inp:"(động local) XML có external entity + billion-laughs",out:"Không lộ /etc/passwd, không DoS, không 500/stacktrace — chặn đúng",
+    exp:"Điểm cộng: parser XML cấu hình an toàn.",ref:"https://cwe.mitre.org/data/definitions/611.html"}
+  ]},
+ {id:"P-145",name:"Onboarding HR RAG",method:"API động + e2e",link:"deploy riêng (đã ẩn)",
+  counts:{Critical:0,High:1,Medium:2,Low:0,Info:0},
+  cat:{"Auth/Secret":"High","Agentic/LLM":"Medium","IDOR/Permission":"Info","Logic/Race":null,"DoS/Tải":"Medium","Data integrity":null},
+  highlight:"Mật khẩu khởi tạo dùng chung; detector injection bypass 9/9; thiếu rate-limit. File robustness rất tốt.",
+  findings:[
+   {t:"Thiếu rate-limit toàn cục (login + LLM/OCR)",sev:"Medium",cat:"DoS/Tải",code:"CWE-770 / CWE-307 · OWASP API4:2023",
+    def:"Login không throttle/khoá; GET & endpoint LLM/OCR không giới hạn tần suất.",
+    inp:"12 login sai liên tiếp / 25 GET song song",out:"12/12=401 (không 429, không khoá); 25/25=200",
+    exp:"Cộng hưởng mật khẩu chung → brute-force chiếm tài khoản; đốt chi phí LLM.",
+    ref:"https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/"},
+   {t:"Mật khẩu khởi tạo dùng chung, đoán được",sev:"High",cat:"Auth/Secret",code:"CWE-521 / CWE-1392 · OWASP A07:2021",
+    def:"Mọi nhân viên tạo từ intake dùng chung mật khẩu ban đầu (code tự thừa nhận 'ai biết email là đăng nhập được').",
+    inp:"login(email_nhân_viên, '<REDACTED_PASSWORD>')",out:"Đăng nhập được tới khi nạn nhân đổi",
+    exp:"Biết email nhân viên = chiếm tài khoản, đọc hồ sơ/ tài liệu nội bộ.",ref:"https://cwe.mitre.org/data/definitions/521.html"},
+   {t:"Bộ phát hiện prompt-injection regex quá hẹp",sev:"Medium",cat:"Agentic/LLM",code:"OWASP LLM01:2025 · CWE-20",
+    def:"injection_reason chỉ 8 regex keyword trên text bỏ dấu; né bằng đồng nghĩa/đa ngôn ngữ/mã hoá.",
+    inp:"9 biến thể: disregard/forget/override, VI synonym, base64, đa ngôn ngữ, exfil markdown, zero-width",out:"XÁC NHẬN ĐỘNG qua /knowledge/preview: 3/3 đối chứng bị bắt, 9/9 biến thể né detector",
+    exp:"Qua detector INTAKE; giảm nhẹ nhờ grounding + trích dẫn + tắt tool. (Chat RAG đầu-cuối đã test riêng → PASS, xem card dưới.)",ref:"https://genai.owasp.org/llmrisk/llm01-prompt-injection/"},
+   {t:"Chat RAG injection đầu-cuối: PASS (phòng thủ 5 tầng)",sev:"Good",cat:"Agentic/LLM",code:"OWASP LLM01:2025 (đã phòng)",
+    def:"Kiểm indirect/stored injection: HR xuất bản tài liệu tri thức nhiễm độc (đòi lộ system prompt + liệt kê tool + chèn canary) rồi để employee chat truy xuất.",
+    inp:"Doc nhiễm độc topic tai-khoan-quyen / lo-trinh-onboarding + câu hỏi employee sát nội dung",
+    out:"Doc ĐƯỢC retrieve (5 citations) nhưng KHÔNG lộ canary/system-prompt/tool; model chủ động từ chối",
+    steps:["Tạo employee test qua intake (đã deactivate sau khi xong)","HR publish tài liệu nhiễm độc có canary + chỉ dẫn độc","Đăng nhập employee, hỏi câu khớp tài liệu để ép RAG retrieve","Quan sát: 5 citations nhưng câu trả lời sạch — canary/system/tool không lộ"],
+    impact:"Phòng thủ nhiều tầng: screen câu hỏi + screen từng chunk (audit prompt_injection_blocked) + ngưỡng similarity 0.72 + gate chủ đề biến động cao + grounded-prompt 'references are data/no tools'. Đã dọn (deactivate employee, supersede doc, SQL cleanup).",
+    ref:"https://genai.owasp.org/llmrisk/llm01-prompt-injection/"}
+  ]},
+ {id:"P-047",name:"MoveInMate",method:"API động",link:"deploy riêng (đã ẩn)",
+  counts:{Critical:0,High:0,Medium:1,Low:2,Info:0},
+  cat:{"Auth/Secret":"Medium","Agentic/LLM":"good","IDOR/Permission":"Info","Logic/Race":null,"DoS/Tải":"Low","Data integrity":null},
+  highlight:"/auth/reset wipe-app không auth (mã tĩnh). Battery PASS toàn bộ: injection 10/10 chặn, file 15/15 an toàn, rate-limit theo user + chống spoof IP.",
+  findings:[
+   {t:"/auth/reset: reset toàn app không xác thực",sev:"Medium",cat:"Auth/Secret",code:"CWE-620 · OWASP A01:2021",
+    def:"Reset toàn bộ dữ liệu chỉ cần 1 mã tĩnh dùng chung, không cần đăng nhập (đang bật trên live).",
+    inp:"POST /auth/reset {code, confirm:true}",out:"reset_available:true (có rate-limit + so sánh hằng-thời-gian)",
+    exp:"Lộ mã = bất kỳ ai wipe app demo. Không brute-force để tránh khoá.",ref:"https://cwe.mitre.org/data/definitions/620.html"},
+   {t:"Chat thiếu throttle global/IP (chỉ theo user)",sev:"Low",cat:"DoS/Tải",code:"OWASP API4:2023",
+    def:"Rate-limit /agent/chat 30/10min keyed theo user (chống spoof IP tốt) nhưng không có bucket global/IP → nhiều tài khoản không bị gộp hạn mức; upload quá cỡ buffer tới ~16MB trước khi 413.",
+    inp:"(battery) nhiều tài khoản gọi chat / upload >16MB",out:"429 đúng theo user; 413 trễ 30–84s (có trần RAM, không DoS thật)",
+    exp:"Nên thêm global/IP throttle + chặn theo Content-Length sớm ở prod.",ref:"https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/"},
+   {t:"Validation chạy trước authz (lộ schema)",sev:"Low",cat:"IDOR/Permission",code:"CWE-200",
+    def:"422 liệt kê field trước khi tới 403 ở endpoint manager.",inp:"resident POST /management/resident-accounts",
+    out:"422 field required (trước 403)",exp:"Lộ schema endpoint manager (nhẹ).",ref:"https://cwe.mitre.org/data/definitions/200.html"}
+  ]},
+ {id:"P-123",name:"GreenCar",method:"API động",link:"deploy riêng (đã ẩn)",
+  counts:{Critical:0,High:0,Medium:1,Low:2,Info:0},
+  cat:{"Auth/Secret":"Medium","Agentic/LLM":"Low","IDOR/Permission":"good","Logic/Race":"good","DoS/Tải":"Low","Data integrity":null},
+  highlight:"Rate-limit login KHÔNG hiệu lực ở live (proxy IP); còn lại rất chắc: injection chặn end-to-end, race serialize, file robust",
+  findings:[
+   {t:"Rate-limit đăng nhập không hiệu lực ở production",sev:"Medium",cat:"Auth/Secret",code:"CWE-307 · OWASP API4:2023",
+    def:"Limiter 20/5min khoá theo request.client.host; sau proxy Render (uvicorn không --proxy-headers) IP không ổn định → bucket phân mảnh; thêm xoay X-Forwarded-For.",
+    inp:"30 burst + 23 header cố định + 25 xoay X-Forwarded-For login sai",out:"Tất cả 401, KHÔNG có 429 nào",
+    exp:"Không có phòng thủ brute-force hiệu lực ở prod → credential-stuffing khả thi.",
+    ref:"https://cwe.mitre.org/data/definitions/307.html"},
+   {t:"Injection gián tiếp qua email intake",sev:"Low",cat:"Agentic/LLM",code:"OWASP LLM01:2025",
+    def:"Nội dung email người gửi đưa vào Gemini trích xuất.",inp:"email body có payload + canary",
+    out:"Chặn end-to-end: model chỉ chuẩn hoá khiếu nại, KHÔNG lộ system prompt, outcome không bị ép (untrusted label + schema + tắt function-calling + CSKH duyệt)",
+    exp:"Chỉ làm lệch trường trích xuất; không chiếm quyền.",ref:"https://genai.owasp.org/llmrisk/llm01-prompt-injection/"},
+   {t:"/analyze không giới hạn số lần re-analyze (Denial-of-Wallet)",sev:"Low",cat:"DoS/Tải",code:"OWASP API4:2023",
+    def:"CSKH re-analyze không có trần số lần → đốt chi phí Gemini; giảm nhẹ nhờ stage idempotent-cache.",
+    inp:"gọi /analyze lặp",out:"Chặn role/state tốt nhưng không trần tần suất",
+    exp:"Chi phí AI tăng nếu bị lạm dụng nội bộ.",ref:"https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/"}
+  ]},
+ {id:"P-075",name:"LostLink (Green SM)",method:"API động",link:"deploy riêng (đã ẩn)",
+  counts:{Critical:0,High:0,Medium:0,Low:1,Info:0},
+  cat:{"Auth/Secret":"good","Agentic/LLM":"good","IDOR/Permission":"good","Logic/Race":"good","DoS/Tải":null,"Data integrity":null},
+  highlight:"Nền tảng chắc nhất: session+PBKDF2, ownership chặt. Battery PASS toàn bộ: VLM whitelist chặn injection (0 canary), file 422 sạch, idempotency, race double-submit chặn (advisory lock), input caps.",
+  findings:[
+   {t:"demo-login cấp session customer với OTP bất kỳ",sev:"Low",cat:"Auth/Secret",code:"CWE-287",
+    def:"Khi demo_enabled, OTP 6 số bất kỳ cấp session customer seed.",inp:"POST /auth/demo-login {otp:'123456'}",
+    out:"200 — session customer (chỉ 1 tài khoản seed)",exp:"Đảm bảo tắt ở prod.",ref:"https://cwe.mitre.org/data/definitions/287.html"}
+  ]},
+ {id:"P-140",name:"(boilerplate)",method:"Scan + động local",link:"dựng local (:8140)",
+  counts:{Critical:0,High:0,Medium:1,Low:2,Info:1},
+  cat:{"Auth/Secret":"Low","Agentic/LLM":"Info","IDOR/Permission":null,"Logic/Race":null,"DoS/Tải":"Medium","Data integrity":null},
+  highlight:"KHÔNG còn 'sạch': /api/v1/chat không auth + không giới hạn body → DoS (động); thiếu security headers",
+  findings:[
+   {t:"/api/v1/chat không auth + không giới hạn body → DoS (động)",sev:"Medium",cat:"DoS/Tải",code:"CWE-400 / CWE-770 · OWASP API4:2023",
+    def:"max_length=5000 (điểm cộng khi scan tĩnh) chỉ áp SAU khi toàn bộ body được buffer + parse JSON. Endpoint không auth + không rate-limit + 1 worker.",
+    inp:"(động local) POST /api/v1/chat với body ~200MB",
+    out:"Body 200MB bị nạp + parse ~4.7s rồi mới trả 422 — thời gian tuyến tính theo kích thước",
+    steps:["Dựng app local (uvicorn :8140)","Gửi POST /api/v1/chat với body rất lớn (vd 200MB), không cần auth","Đo thời gian tới khi trả 422 (~4.7s cho 200MB)","Suy ra: nhiều request lớn ẩn danh → bão hoà worker"],
+    impact:"DoS khả thi: không auth + không rate-limit + 1 worker → vài request lớn làm nghẽn dịch vụ.",
+    ref:"https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/"},
+   {t:"/chat không auth + lộ str(e) ở lỗi 500 (tĩnh)",sev:"Low",cat:"Auth/Secret",code:"CWE-209",
+    def:"Endpoint chat echo không auth; nhánh lỗi 500 trả nguyên văn exception (không reachable động vì validation chặn ở 422 trước).",inp:"(scan code)",out:"Lộ chi tiết lỗi (chỉ khi tới được nhánh 500)",
+    exp:"Rò thông tin; LLM chưa nối ở bản hiện tại.",ref:"https://cwe.mitre.org/data/definitions/209.html"},
+   {t:"Thiếu security headers (động)",sev:"Info",cat:"Auth/Secret",code:"CWE-693",
+    def:"Thiếu X-Content-Type-Options, X-Frame-Options, CSP, HSTS.",inp:"(động local) kiểm header phản hồi",out:"Không có nosniff/frame-options/CSP/HSTS",
+    exp:"Hardening: nên thêm security headers.",ref:"https://cwe.mitre.org/data/definitions/693.html"}
+  ]}
+];
+// battery matrix: p=pass, w=warn/partial, f=fail, n=n/a
+const BATTERY=[
+ {id:"P-136",cells:["n","n","n","f","w","w","f"],note:"ingestion không auth/rate-limit; ghi sụp; race 5 ca"},
+ {id:"P-010",cells:["n","n","n","p","n","n","n"],note:"LLM upstream 503 trên deploy → không test được injection/chi phí động; throttle+guest-quota OK, XFF không bypass, swagger /api/docs 404 ở live. Rủi ro chính ở scan code."},
+ {id:"P-047",cells:["p","p","p","w","p","p","p"],note:"tốt; chat thiếu global throttle (user-key OK); load read+write êm, 429 backpressure"},
+ {id:"P-075",cells:["p","p","p","p","p","p","p"],note:"chắc nhất; VLM whitelist, advisory lock"},
+ {id:"P-123",cells:["p","p","p","f","p","p","w"],note:"rate-limit login fail ở live; perf N+1"},
+ {id:"P-145",cells:["p","p","p","f","p","w","p"],note:"thiếu rate-limit; detector INTAKE bypass 9/9; chat RAG e2e PASS (phòng thủ 5 tầng)"}
+];
+const LOAD=[{c:1,p50:485.7,p95:560.3,p99:600.2},{c:5,p50:486.2,p95:618.1,p99:773.2},{c:10,p50:468.5,p95:497.1,p99:505.6},{c:20,p50:492.2,p95:509.6,p99:514.4},{c:35,p50:490.8,p95:521.5,p99:534.0},{c:50,p50:518.2,p95:572.0,p99:575.9}];
+
+// ===== helpers =====
+const sc=s=>getComputedStyle(document.documentElement).getPropertyValue('--'+SEVC[s]).trim()||'#888';
+const catColor=v=>v==null?'var(--panel2)':v==='good'?'var(--good)':sc(v);
+function totals(){const t={Critical:0,High:0,Medium:0,Low:0,Info:0};TEAMS.forEach(T=>SEV.forEach(s=>t[s]+=T.counts[s]||0));return t;}
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+// ===== stats =====
+(function(){const t=totals();const total=SEV.reduce((a,s)=>a+t[s],0);
+ const strong=TEAMS.filter(T=>!T.counts.Critical&&!T.counts.High).length;
+ const items=[["8","Nhóm rà soát"],[String(total),"Tổng findings"],[String(t.Critical),"Critical",'crit'],[String(t.High),"High",'high'],[String(strong),"Nhóm nền tảng tốt",'good']];
+ document.getElementById('stats').innerHTML=items.map(i=>`<div class="stat"><div class="n" style="color:${i[2]?`var(--${i[2]})`:'var(--fg)'}">${i[0]}</div><div class="l">${i[1]}</div></div>`).join('');
+})();
+
+// ===== donut =====
+(function(){const t=totals();const total=SEV.reduce((a,s)=>a+t[s],0)||1;let a=-Math.PI/2;const R=70,r=44,cx=90,cy=90;let paths='';
+ SEV.forEach(s=>{const frac=t[s]/total;if(frac<=0)return;const a2=a+frac*2*Math.PI;
+   const x1=cx+R*Math.cos(a),y1=cy+R*Math.sin(a),x2=cx+R*Math.cos(a2),y2=cy+R*Math.sin(a2);
+   const xi2=cx+r*Math.cos(a2),yi2=cy+r*Math.sin(a2),xi1=cx+r*Math.cos(a);const yi1=cy+r*Math.sin(a);
+   const big=frac>.5?1:0;
+   paths+=`<path d="M${x1} ${y1} A${R} ${R} 0 ${big} 1 ${x2} ${y2} L${xi2} ${yi2} A${r} ${r} 0 ${big} 0 ${xi1} ${yi1} Z" fill="${sc(s)}"></path>`;a=a2;});
+ document.getElementById('donut').innerHTML=`<svg viewBox="0 0 180 180" width="180" height="180" style="margin:0 auto">${paths}<text x="90" y="86" text-anchor="middle" font-size="26" font-weight="800" fill="var(--fg)">${total}</text><text x="90" y="104" text-anchor="middle" font-size="11" fill="var(--muted)">findings</text></svg>`;
+ document.getElementById('donutlegend').innerHTML=SEV.map(s=>`<span><i class="dot" style="background:${sc(s)}"></i>${s} · ${t[s]}</span>`).join('');
+})();
+
+// ===== team bars (stacked) =====
+(function(){const rows=[...TEAMS].sort((A,B)=>score(B)-score(A));
+ document.getElementById('teambars').innerHTML=rows.map(T=>{const tot=SEV.reduce((a,s)=>a+(T.counts[s]||0),0);
+  const segs=SEV.map(s=>T.counts[s]?`<span style="width:${100*T.counts[s]/(tot||1)}%;background:${sc(s)}"></span>`:'').join('');
+  return `<div style="display:flex;align-items:center;gap:10px;margin:7px 0"><div style="width:58px;font-family:var(--mono);font-size:12px;color:var(--muted)">${T.id}</div><div class="bar" style="flex:1">${segs||'<span style="width:100%;background:var(--panel2)"></span>'}</div><div style="width:22px;text-align:right;font-variant-numeric:tabular-nums;font-size:13px">${tot}</div></div>`;}).join('');
+})();
+
+function score(T){return (T.counts.Critical||0)*1000+(T.counts.High||0)*100+(T.counts.Medium||0)*10+(T.counts.Low||0)+(T.counts.Info||0)*0.1;}
+function topSev(T){return SEV.find(s=>T.counts[s]>0);}
+
+// ===== rank table =====
+(function(){const rows=[...TEAMS].sort((A,B)=>score(B)-score(A));
+ document.querySelector('#ranktable tbody').innerHTML=rows.map((T,i)=>{const top=topSev(T);
+  const tot=SEV.reduce((a,s)=>a+(T.counts[s]||0),0);
+  const segs=SEV.map(s=>T.counts[s]?`<span style="width:${100*T.counts[s]/(tot||1)}%;background:${sc(s)}"></span>`:'').join('');
+  const b=top?`<span class="badge b-${SEVC[top]}">${top}</span>`:`<span class="badge b-good">OK</span>`;
+  return `<tr><td class="rank">${i+1}</td><td><b>${T.id}</b> <span style="color:var(--muted)">${esc(T.name)}</span></td><td><span class="pill">${T.method}</span></td><td>${b}</td><td><div class="bar" style="width:150px">${segs||'<span style="width:100%;background:var(--panel2)"></span>'}</div></td><td style="white-space:normal;color:var(--muted);font-size:12px;max-width:320px">${esc(T.highlight)}</td></tr>`;}).join('');
+})();
+
+// ===== battery matrix =====
+(function(){const col={p:'var(--good)',w:'var(--med)',f:'var(--crit)',n:'var(--panel2)'};
+ const lab={p:'✓',w:'!',f:'✕',n:'–'};
+ document.querySelector('#batterytable tbody').innerHTML=BATTERY.map(b=>{
+  const tds=b.cells.map(c=>`<td style="text-align:center"><span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:6px;background:${col[c]};color:${c==='n'?'var(--faint)':'#05101c'};font-weight:700;font-family:var(--mono)">${lab[c]}</span></td>`).join('');
+  return `<tr><td><b>${b.id}</b></td>${tds}</tr><tr><td></td><td colspan="7" style="color:var(--faint);font-size:11px;white-space:normal;border-bottom:1px solid var(--line)">${esc(b.note)}</td></tr>`;}).join('');
+})();
+
+// ===== heatmap =====
+(function(){const order=[...TEAMS].sort((A,B)=>score(B)-score(A));
+ const cell=46,lw=120,th=24;const W=lw+CATS.length*cell+10,H=th+order.length*cell+8;
+ let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`;
+ CATS.forEach((c,j)=>{s+=`<text x="${lw+j*cell+cell/2}" y="16" text-anchor="middle" font-size="9" fill="var(--muted)">${c.split('/')[0]}</text>`;});
+ order.forEach((T,i)=>{const y=th+i*cell;s+=`<text x="4" y="${y+cell/2+4}" font-size="11" fill="var(--fg)" font-family="var(--mono)">${T.id}</text>`;
+   CATS.forEach((c,j)=>{const v=T.cat[c];const x=lw+j*cell;const col=catColor(v);
+     const lab=v==null?'':v==='good'?'✓':v[0];
+     s+=`<rect x="${x}" y="${y}" width="${cell-4}" height="${cell-4}" rx="6" fill="${col}" opacity="${v==null?0.25:0.9}"></rect>`;
+     if(lab)s+=`<text x="${x+(cell-4)/2}" y="${y+(cell-4)/2+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#05101c">${lab}</text>`;});});
+ s+='</svg>';document.getElementById('heatmap').innerHTML=s;
+})();
+
+// ===== load chart =====
+(function(){const W=360,H=200,pad=34;const xs=LOAD.map(d=>d.c);const maxY=800;
+ const X=c=>pad+(c-1)/(50-1)*(W-pad-10);const Y=v=>H-pad-(v/maxY)*(H-pad-14);
+ const line=(k,col)=>{const d=LOAD.map((p,i)=>`${i?'L':'M'}${X(p.c).toFixed(1)} ${Y(p[k]).toFixed(1)}`).join(' ');
+   return `<path d="${d}" fill="none" stroke="${col}" stroke-width="2.2"></path>`+LOAD.map(p=>`<circle cx="${X(p.c).toFixed(1)}" cy="${Y(p[k]).toFixed(1)}" r="2.6" fill="${col}"></circle>`).join('');};
+ let g='';for(let v=0;v<=maxY;v+=200){g+=`<line x1="${pad}" y1="${Y(v)}" x2="${W-10}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"></line><text x="${pad-6}" y="${Y(v)+3}" text-anchor="end" font-size="9" fill="var(--faint)">${v}</text>`;}
+ let xl=xs.map(c=>`<text x="${X(c)}" y="${H-pad+14}" text-anchor="middle" font-size="9" fill="var(--faint)">${c}</text>`).join('');
+ document.getElementById('loadchart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%">${g}${xl}<text x="${(W)/2}" y="${H-4}" text-anchor="middle" font-size="9" fill="var(--muted)">concurrency</text>${line('p50',getComputedStyle(document.documentElement).getPropertyValue('--info'))}${line('p95',getComputedStyle(document.documentElement).getPropertyValue('--high'))}${line('p99',getComputedStyle(document.documentElement).getPropertyValue('--crit'))}</svg>`;
+})();
+
+// ===== write bars =====
+(function(){const ok=7,fail=33;const W=320,H=90;
+ document.getElementById('writebars').innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%">
+   <text x="0" y="16" font-size="11" fill="var(--muted)">/health (đọc) · c=50</text>
+   <rect x="0" y="22" width="${W}" height="14" rx="7" fill="var(--good)" opacity=".85"></rect>
+   <text x="${W-4}" y="33" text-anchor="end" font-size="10" fill="#05101c" font-weight="700">0% lỗi</text>
+   <text x="0" y="60" font-size="11" fill="var(--muted)">/telemetry/gps (ghi) · 40 req</text>
+   <rect x="0" y="66" width="${W}" height="14" rx="7" fill="var(--panel2)"></rect>
+   <rect x="0" y="66" width="${W*fail/40}" height="14" rx="7" fill="var(--crit)"></rect>
+   <text x="${W-4}" y="77" text-anchor="end" font-size="10" fill="#fff" font-weight="700">82.5% timeout</text></svg>`;
+})();
+
+// ===== attack flow SVG =====
+function flow(steps,cols){const W=300,bh=40,gap=18;const H=steps.length*(bh+gap);let s=`<svg viewBox="0 0 ${W} ${H}" width="100%">`;
+ steps.forEach((t,i)=>{const y=i*(bh+gap);const col=cols[i]||'var(--accentdim)';
+  s+=`<rect x="6" y="${y}" width="${W-12}" height="${bh}" rx="9" fill="${col}" stroke="var(--line)"></rect>`;
+  s+=`<text x="${W/2}" y="${y+bh/2+4}" text-anchor="middle" font-size="11" fill="var(--fg)">${t}</text>`;
+  if(i<steps.length-1)s+=`<path d="M${W/2} ${y+bh} l0 ${gap-4}" stroke="var(--faint)" stroke-width="2" marker-end="url(#ar)"></path>`;});
+ s+=`<defs><marker id="ar" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="var(--faint)"></path></marker></defs></svg>`;return s;}
+document.getElementById('flow-jwt').innerHTML=flow(
+ ["Đọc secret hardcode trong repo","Tự ký JWT role=ADMIN (HS256)","GET /auth/me → 200 ADMIN","Tạo user ADMIN mới = cửa hậu"],
+ ["var(--panel2)","var(--med)","var(--high)","var(--crit)"].map(c=>`color-mix(in srgb, ${c} 35%, var(--panel))`));
+document.getElementById('flow-race').innerHTML=flow(
+ ["12 request assign-vehicle SONG SONG","Cùng vượt kiểm 'đã có ca?' (no lock)","INSERT nhiều ca cùng lúc","5 ca ACTIVE cho 1 tài xế"],
+ ["var(--panel2)","var(--med)","var(--high)","var(--crit)"].map(c=>`color-mix(in srgb, ${c} 35%, var(--panel))`));
+
+// ===== team details =====
+(function(){const order=[...TEAMS].sort((A,B)=>score(B)-score(A));
+ document.getElementById('teamdetails').innerHTML=order.map(T=>{const top=topSev(T);
+  const border=top?sc(top):getComputedStyle(document.documentElement).getPropertyValue('--good');
+  const badges=SEV.filter(s=>T.counts[s]).map(s=>`<span class="badge b-${SEVC[s]}">${T.counts[s]} ${s}</span>`).join(' ')||'<span class="badge b-good">Không có lỗ nặng</span>';
+  const fs=T.findings.map(f=>{
+     const bc=SEVC[f.sev]||'good';
+     const steps=(f.steps&&f.steps.length)?f.steps:[
+       `Chuẩn bị quyền/bối cảnh như mô tả, gửi: ${f.inp}`,
+       `Quan sát phản hồi hệ thống: ${f.out}`,
+       `Đối chiếu với hành vi an toàn kỳ vọng → xác nhận lỗ hổng`];
+     const stepsHtml=steps.map(s=>`<li>${esc(s)}</li>`).join('');
+     const impact=f.impact||f.exp;
+     return `<details class="finding">
+     <summary><span class="badge b-${bc}">${esc(f.sev)}</span> ${esc(f.t)}<span class="chev">›</span></summary>
+     <div class="cite" style="margin-top:6px"><b>${esc(f.cat)}</b> · <span class="pill">${esc(f.code)}</span> · <a href="${f.ref}" target="_blank" rel="noopener">tham chiếu ↗</a></div>
+     <div class="fblk"><span class="flabel">① Nguyên nhân</span><div class="k">${esc(f.def)}</div></div>
+     <div class="fblk"><span class="flabel">② Input</span><div class="io">${esc(f.inp)}</div></div>
+     <div class="fblk"><span class="flabel">③ Output</span><div class="io">${esc(f.out)}</div></div>
+     <div class="fblk"><span class="flabel">④ Các bước tái hiện</span><ol class="fsteps">${stepsHtml}</ol></div>
+     <div class="fblk"><span class="flabel">⑤ Hậu quả</span><div class="k">${esc(impact)}</div></div>
+   </details>`;}).join('');
+  return `<details class="team teamcard" style="border-left-color:${border}">
+    <summary><h3>${T.id} · ${esc(T.name)} <span class="pill">${T.method}</span> ${badges}<span class="chev">›</span></h3>
+    <div class="meta">${esc(T.link)}</div></summary>
+    ${fs}</details>`;}).join('');
+})();
+
+// ===== footer =====
+document.getElementById('foot').innerHTML=`Phương pháp: 5 nhóm có handoff/đăng nhập được → test động qua API trên deploy; 3 nhóm không deploy → scan mã nguồn <b>+ dựng chạy local để test động</b> (mock dịch vụ LLM). P-145 chạy thêm injection RAG đầu-cuối. Mọi finding kèm script tái hiện + bằng chứng (JSON/log) lưu nội bộ; bản ghi test gắn <code>SECTEST-</code> + có SQL/teardown dọn. Bản công khai đã che mật khẩu/token/IP/exploit chạy được. Trích dẫn: CWE (mitre.org), OWASP API &amp; LLM Top 10 (owasp.org).`;
+
+// ===== modal joke =====
+const modal=document.getElementById('modal');
+document.getElementById('unlockbtn').addEventListener('click',()=>{
+ modal.classList.add('on');const prog=document.getElementById('prog');const msg=document.getElementById('mmsg');
+ const em=document.getElementById('memoji');const title=document.getElementById('mtitle');const close=document.getElementById('mclose');
+ em.textContent='⏳';title.textContent='Đang mở khoá…';msg.textContent='Đang xác thực quyền truy cập nội dung cao cấp…';close.hidden=true;prog.style.width='0';
+ const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;let p=0;
+ const steps=[[25,'Đang kiểm tra gói tài trợ…'],[55,'Đang đối soát ví Claude…'],[85,'Gần xong rồi, kiên nhẫn chút…'],[99,'Chỉ còn 1 bước cuối…']];
+ const tick=()=>{p+=reduce?100:7;prog.style.width=Math.min(p,100)+'%';const st=steps.find(s=>p<s[0]);if(st)msg.textContent=st[1];
+  if(p<100){setTimeout(tick,reduce?0:180);}else{
+   em.textContent='😏';title.textContent='Truy cập bị từ chối';
+   msg.innerHTML='Cả nhóm vui lòng <b>tài trợ cho mentor 222.22$</b> (max 20× Claude) để xem phần này 😏';
+   close.hidden=false;}};
+ setTimeout(tick,reduce?0:180);
+});
+document.getElementById('mclose').addEventListener('click',()=>modal.classList.remove('on'));
+modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('on');});
+</script>

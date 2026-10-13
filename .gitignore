@@ -1,0 +1,5 @@
+evidences/
+*.env
+.env*
+*_token*
+*secret*

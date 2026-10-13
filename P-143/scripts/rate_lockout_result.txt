@@ -1,0 +1,17 @@
+### A) Rate-limit probe: 120 rapid logins, bogus non-existent email
+elapsed 5.83s status counts: {(401, 'INVALID_CREDENTIALS'): 12, (401, 'ACCOUNT_LOCKED'): 108}
+  -> any 429 (rate limited)? False
+
+### B) Per-account lockout (sequential): <REDACTED_EMAIL> wrong password x8
+  attempt 1: (401, 'INVALID_CREDENTIALS')
+  attempt 2: (401, 'INVALID_CREDENTIALS')
+  attempt 3: (401, 'INVALID_CREDENTIALS')
+  attempt 4: (401, 'INVALID_CREDENTIALS')
+  attempt 5: (401, 'ACCOUNT_LOCKED')
+  attempt 6: (401, 'ACCOUNT_LOCKED')
+  attempt 7: (401, 'ACCOUNT_LOCKED')
+  attempt 8: (401, 'ACCOUNT_LOCKED')
+
+### C) TOCTOU race on failure counter: 15 concurrent wrong logins for a FRESH account
+  concurrent results: {(401, 'INVALID_CREDENTIALS'): 12, (401, 'ACCOUNT_LOCKED'): 3}
+  correct-password login AFTER burst: (401, 'ACCOUNT_LOCKED') (423/409 LOCKED => lockout held; 200 => not locked)

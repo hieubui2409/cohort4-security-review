@@ -1,0 +1,14 @@
+# mixed approve(L2)/reject race N= 12  invoice= 01a13608-7234-7681-8821-d03af80cc4cd 23:13:52 +0700
+status counts: {('REJECT', 200): 1, ('APPROVE', 409): 6, ('REJECT', 409): 5}
+   0 APPROVE 409 {"error":{"code":"CONFLICT","message":"Hóa đơn vừa được người khác duyệt hoặc từ chối; hãy tải lại rồi quyết đ
+   1  REJECT 409 {"error":{"code":"CONFLICT","message":"Hóa đơn vừa được người khác duyệt hoặc từ chối; hãy tải lại rồi quyết đ
+   2 APPROVE 409 {"error":{"code":"NOT_PENDING_APPROVAL","message":"Hóa đơn không ở bước chờ duyệt.","details":{}}}
+   3  REJECT 409 {"error":{"code":"CONFLICT","message":"Hóa đơn vừa được người khác duyệt hoặc từ chối; hãy tải lại rồi quyết đ
+   4 APPROVE 409 {"error":{"code":"CONFLICT","message":"Hóa đơn vừa được người khác duyệt hoặc từ chối; hãy tải lại rồi quyết đ
+   5  REJECT 200 {"invoice_id":"01a13608-7234-7681-8821-d03af80cc4cd","level":2,"decision":"REJECT","stage_after":null,"l2_reas
+   6 APPROVE 409 {"error":{"code":"CONFLICT","message":"Hóa đơn vừa được người khác duyệt hoặc từ chối; hãy tải lại rồi quyết đ
+   7  REJECT 409 {"error":{"code":"CONFLICT","message":"Hóa đơn vừa được người khác duyệt hoặc từ chối; hãy tải lại rồi quyết đ
+   8 APPROVE 409 {"error":{"code":"NOT_PENDING_APPROVAL","message":"Hóa đơn không ở bước chờ duyệt.","details":{}}}
+   9  REJECT 409 {"error":{"code":"CONFLICT","message":"Hóa đơn vừa được người khác duyệt hoặc từ chối; hãy tải lại rồi quyết đ
+  10 APPROVE 409 {"error":{"code":"CONFLICT","message":"Hóa đơn vừa được người khác duyệt hoặc từ chối; hãy tải lại rồi quyết đ
+  11  REJECT 409 {"error":{"code":"CONFLICT","message":"Hóa đơn vừa được người khác duyệt hoặc từ chối; hãy tải lại rồi quyết đ
