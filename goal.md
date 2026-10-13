@@ -70,3 +70,17 @@
 - **Phần "Khuyến nghị" bị khoá sau 1 button**: bấm vào hiện modal vui: "Cả nhóm vui lòng tài trợ cho mentor 222.22$ (max 20x Claude) để xem phần này" + icon cười đểu. (Chỉ là modal text vui, KHÔNG thu tiền/credential thật.)
 - **Lưu ý an toàn khi public:** artifact công khai KHÔNG chứa mật khẩu thật, token, IP/exploit chạy được của hệ thống còn sống/chưa vá (P-136 còn Critical) — redact các chi tiết nhạy cảm trong bản public, giữ bản đầy đủ ở `./reviews/`.
 - **Quyết định thiết kế (chốt 2026-10-13):** style = **security report chuyên nghiệp** (nền tối, accent theo severity, card finding, chart SVG); **redact nhạy cảm** ở bản public; nội dung = **cả 8 nhóm có xếp hạng**; modal "Khuyến nghị" = **đếm ngược giả "đang mở khoá..." rồi vẫn khoá** + câu "Cả nhóm vui lòng tài trợ cho mentor 222.22$ (max 20x Claude) để xem phần này 😏". Có trích dẫn nguồn CWE/OWASP + biểu đồ SVG (phân bố severity, xếp hạng nhóm).
+
+## 9. Trạng thái hoàn thành & GIỚI HẠN ĐƯỢC CHẤP NHẬN (chốt 2026-10-13)
+> Mục này cập nhật phạm vi §3 ("test động cho mọi nhóm có bề mặt tương ứng"): ghi nhận waiver mentor đã chấp nhận, để goal.md khớp thực tế. Chi tiết quyết định: `reviews/USER-DECISIONS.md`.
+
+**Đã phủ test ĐỘNG cho cả 8 nhóm:**
+- 5 nhóm có deploy (P-047, P-075, P-123, P-136, P-145): test động qua API trên deploy.
+- 3 nhóm không deploy (P-010, P-140, P-143): **dựng chạy local** (docker/venv, mock dịch vụ LLM) để test động.
+- P-145: chạy thêm **injection RAG đầu-cuối** (tạo employee → publish doc nhiễm độc → chat), có kiểm soát + đã khôi phục.
+
+**Cost / context-memory / caching / rate-limit:** đã test trên các nhóm **có bề mặt LLM hoạt động** (P-047 có script riêng `03_cost_context_memory_cache_ratelimit.py`; P-145/P-123/P-075/P-136 qua battery). Với nhóm mà LLM **chưa nối / là mock / thiếu key** (P-140 chưa nối LLM; P-010 LLM mock; P-143 OpenRouter không key) thì cost/context/memory/caching ở tầng-model **không đo được** — cùng gốc với giới hạn dưới đây.
+
+**GIỚI HẠN ĐƯỢC MENTOR CHẤP NHẬN (waiver):** độ nhạy *nội tại* của model proprietary dưới injection cho **P-075** (VLM chạy `mock`) và **P-143** (OpenRouter URL hard-code HTTPS, không có key) **không đo được** vì cần API key trả phí ở staging — ngoài tầm reviewer. Toàn bộ **tầng phòng thủ QUANH model** (whitelist strip payload, grounding "references are data", taint-filter, screen chunk, ngưỡng similarity, gate chủ đề biến động) **đã kiểm cho mọi nhóm**. P-123 đã quan sát được model Gemini thật. **Mentor chấp nhận đây là giới hạn → review coi như HOÀN TẤT trong phạm vi được cấp phép.**
+
+**Lưu ý partial trong report subagent (đã ghi minh bạch ở README từng nhóm):** P-010 (IDOR/BFLA tenant, upload, trí nhớ đa lượt, load-ghi cần OTP/eKYC/VietQR provider thật → không chạy offline; IDOR đã scan tĩnh xác nhận an toàn); P-143 (injection/system-prompt/cost-context động cần OpenRouter key). Các mục này nằm trong waiver "cần key/credential provider thật" ở trên.
