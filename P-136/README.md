@@ -212,3 +212,9 @@ WRITE POST /telemetry/gps  : 40 request (c=1) -> 33 TIMEOUT / chỉ 7 thành cô
 - **`POST /api/v1/chat`** (`src/api/routes.py`) KHÔNG yêu cầu auth. Hiện agent LangGraph chỉ là khung echo (`nodes/example_node.py` TODO), chưa gọi LLM thật ⇒ tác động thấp, NHƯNG nếu sau này nối LLM/tool thật sẽ thành endpoint LLM mở cho công chúng (LLM01/DoS chi phí). Khuyến nghị thêm auth + rate limit trước khi nối LLM.
 - **Access token sống 30 ngày** (`access_token_expire_minutes=43200`) kèm không có cơ chế thu hồi (logout chỉ xóa phía client) ⇒ token lộ dùng được rất lâu. CWE-613 (Insufficient Session Expiration). Khuyến nghị rút ngắn + blocklist jti.
 - **CORS:** `allow_credentials=True` + `allow_methods=["*"]`/`allow_headers=["*"]`; hiện `cors_origins` mặc định `localhost:3000`, nhưng cần đảm bảo không đặt `*` trên prod.
+
+### Ghi chú context/memory/caching (bề mặt LLM)
+- **`/chat` agent** (`src/api/routes.py` + `src/agents/graph.py`): scaffold LangGraph stateless — `agent.ainvoke({"query":...})`, **không** `thread_id`/`MemorySaver`/checkpoint → **không multi-turn memory, không cache chat**. Multi-turn memory ở endpoint này = **N/A**.
+- **Bề mặt LLM thật** của P-136 là **sinh báo cáo điều hành (phi-hội-thoại)** — nơi FINDING-05 (prompt injection lưu trữ qua tên tài xế) đáp xuống. Không có khái niệm "nhớ bao nhiêu lượt" cho report-gen.
+- **Caching có thật**: `geocoding_service.py` dùng in-memory spatial grid cache (giảm >95% API hit) — đã chạm trong FINDING DoS (geocode đồng bộ chặn request). 
+→ cost/memory/caching ở P-136 đã được bao phủ đúng theo bề mặt: multi-turn N/A, geocode-cache đã test, report-gen là injection-surface (FINDING-05).

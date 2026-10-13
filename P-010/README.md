@@ -20,6 +20,7 @@
 | FINDING-04 | Prompt injection gián tiếp (residual): bộ lọc đầu ra chỉ 4 luật | prompt-injection | **Medium** | OWASP LLM01:2025 |
 | FINDING-05 | /assistant/chat công khai: lộ system prompt + quota khách yếu | auth / llm | **Low** | OWASP LLM07 / API4:2023 |
 | FINDING-06 | Swagger `/api/docs` luôn bật, không chặn ở production | info-disclosure | **Low/Info** | CWE-200 |
+| FINDING-07 | Thiếu kế toán/giới hạn token-chi phí LLM theo người dùng/phiên (+ không cache đáp án) | resource-consumption | **Low** | CWE-770 / OWASP LLM10:2025 |
 
 Tổng: **2 High, 2 Medium, 2 Low/Info.**
 
@@ -289,3 +290,19 @@ Vì bản deploy có `ai-engine` upstream trả **503** (chưa cấu hình AI ke
 - **Độ nhạy của model thật với injection**: LLM là mock (không có key, giống trạng thái deploy) ⇒ chỉ test được các LỚP PHÒNG THỦ quanh model, không đo được việc `gpt-4o-mini` thật có nghe theo chỉ dẫn độc trong `highlights` hay không. Các gap I3/I4 nằm ở lớp phòng thủ nên vẫn hợp lệ.
 - **IDOR/BFLA theo tài khoản tenant/host thật, upload, trí nhớ đa lượt/chi phí file lớn**: luồng ghi cần OTP/eKYC/VietQR nhà cung cấp thật + seed catalog (không có offline); chỉ tạo 1 admin tạm. Phần IDOR đã được scan tĩnh xác nhận an toàn (mục đầu README).
 - **Load ghi nặng (`SECTEST-`)**: không chạy để không làm bẩn DB và vì thời gian mock-LLM không đại diện production.
+
+## Bổ sung: context/memory/caching/cost (động, mock) — 2026-10-13
+
+Bổ sung các mục **agentic ở tầng ứng dụng** còn thiếu, test ĐỘNG với **mock LLM** (không key thật — đúng trạng thái deploy; phần "phán quyết model thật" đã được mentor waive). Chỉ đo HÀNH VI QUẢN LÝ context/memory/caching/cost của ỨNG DỤNG. Dựng lại stack như lần trước (Postgres container riêng `vinstay-p010-pg` cổng 55432 + backend `node dist/main.js` + ai-engine uvicorn; client OpenAI của ai-engine bị chuyển hướng sang mock LLM qua `sitecustomize.py` NGOÀI repo; mock LLM đếm số lần gọi + ghi lại messages app gửi model). Harness chạy `python3 -I` ngoài repo, không import repo. Đã **dọn sạch** (dừng service, xóa container, xóa `.env` local) — git tree repo sạch.
+
+Chi tiết + input/output/thời gian/phân loại: `evidences/EV-07_context-cache-cost.md`, `evidences/10_context_cache_cost_battery.json`, `evidences/11_backend_edge_context_battery.json`. Script: `scripts/05_context_cache_cost_battery.py`, `scripts/06_backend_edge_context_battery.py`.
+
+| Mục | Kết quả | Có finding? |
+|---|---|---|
+| **(1) Context/memory đa lượt** | App **VÔ TRẠNG THÁI**: gửi model `system + TOÀN BỘ messages client gửi`, **KHÔNG trượt cửa sổ / KHÔNG tóm tắt**. Giới hạn = **cap cứng 20 message × 2000 ký tự**; vượt ⇒ **từ chối cả request** (422 ở ai-engine, 400 ở edge), KHÔNG cắt bớt. Relay backend forward **đúng** messages client, không chèn lịch sử. | Không (kiểm soát dương). Không giữ hội thoại ⇒ **không rò ngữ cảnh chéo người dùng**. |
+| **(2) Caching request lặp** | **KHÔNG cache ở tầng LLM**: cùng 1 request gửi 5 lần ⇒ mock LLM bị gọi 5 lần (1,2,3,4,5), độ trễ phẳng. Cache DUY NHẤT là **đọc 60s ở tầng tool/core** (`CoreApi._CACHE`, TTL 60s, max 256, khóa path+params; chỉ endpoint đọc công khai) ⇒ 2 chat giống nhau trong 60s chỉ chạm core 1 lần, nhưng LLM vẫn gọi mỗi lượt. | Góp phần **FINDING-07** (mỗi request trùng = 1 suy luận trả phí đầy đủ). Mặt an toàn: không cache chéo người dùng ⇒ không cache-poisoning. |
+| **(3) Cost/token accounting** | **KHÔNG đếm/giới hạn token hay chi phí theo người dùng/phiên.** Token được tính & ghi log mỗi lượt (`promptTokens/completionTokens`) rồi **vứt bỏ** — không cộng dồn, không ngưỡng, không `max_tokens`. 6 request cỡ tối đa từ cùng caller ⇒ **tất cả 200**, không có cap chi phí. Input bị cap cấu trúc (20×2000) + vòng tool cap (`MAX_TOOL_ROUNDS=5`); backend edge có throttle 20/60s + quota khách 2/24h/IP (EV-06) ⇒ chặn tốt KHÁCH, nhưng người đã đăng nhập không có trần chi phí tích lũy. | **CÓ — FINDING-07** (Low): CWE-770 / OWASP LLM10:2025 Unbounded Consumption. |
+
+**Phần vẫn chặn / ngoài phạm vi (không bịa):**
+- **Độ nhạy của model thật** với context/injection: LLM là mock ⇒ chỉ đo được LỚP QUẢN LÝ của app (số message gửi đi, số lần gọi, usage), không đo được model thật xử lý ngữ cảnh/nhớ ra sao. Đã được mentor waive.
+- **Kế toán token theo người dùng thật xuyên phiên**: app vốn vô trạng thái và ai-engine không có danh tính người dùng ⇒ không có dữ liệu per-user để đo; đây chính là nội dung FINDING-07 (thiếu cơ chế), không phải giới hạn đo đạc.

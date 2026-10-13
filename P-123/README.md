@@ -120,3 +120,8 @@ Phạm vi: CHỈ P-123, qua API (không UI), môi trường được cấp phép
 
 ### Lưu ý minh bạch (controlled + reversible)
 Khi thử cổng `/analyze`, case email-intake có sẵn `a52e979b` bị đẩy `MANUAL_REVIEW → AI_REVIEWING` rồi kẹt (Gemini lỗi). **Đã khôi phục về `MANUAL_REVIEW`** bằng thao tác hợp lệ. Từ đó chỉ dùng case `SECTEST-` của mình cho các lần chạy pipeline.
+
+### Ghi chú context/memory/caching (bề mặt LLM)
+- Bề mặt Gemini của P-123 là **trích xuất email-intake (phi-hội-thoại)** — mỗi email là một lần trích xuất độc lập (`/drafts/{email_id}/extraction`), **không có hội thoại đa lượt** → "nhớ bao nhiêu lượt" = **N/A**.
+- **Rate-limit** đã test động (FINDING: rate-limit login không hiệu lực ở production). Cost/caching ở tầng trích xuất là per-email, không có cache đa phiên.
+- **Model Gemini thật ĐÃ quan sát được** dưới injection (gián tiếp qua nội dung email): model chỉ chuẩn hoá khiếu nại, **không lộ system prompt**, function-calling tắt, output theo schema (FINDING-03 điểm cộng). → phần "phán quyết model thật" của P-123 KHÔNG nằm trong waiver (đã có).

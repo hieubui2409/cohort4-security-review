@@ -83,6 +83,20 @@ details.finding[open]>summary .chev{transform:rotate(90deg)}
 .flabel{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--faint);text-transform:uppercase;margin-bottom:3px}
 .fsteps{margin:4px 0 0 0;padding-left:20px;font-size:12.5px;color:var(--muted)}
 .fsteps li{margin:2px 0}
+#recs{animation:fade .5s ease}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.reccard{border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-top:14px;background:var(--panel)}
+.reccard>h3{margin:0 0 4px;font-size:15px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.recitem{border-top:1px solid var(--line);padding:10px 0}
+.recitem:first-of-type{border-top:0}
+.recitem .rt{font-weight:600;font-size:13.5px;display:flex;gap:7px;align-items:baseline;flex-wrap:wrap}
+.recitem .rf{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.6}
+.recitem .rf b{color:var(--low)}
+.farewell{border:1px solid rgba(255,140,66,.4);border-radius:16px;padding:22px;margin:4px 0 18px;text-align:center;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--high) 10%,var(--panel)),color-mix(in srgb,var(--crit) 8%,var(--panel)))}
+.farewell h3{margin:0 0 8px;font-size:19px}
+.farewell p{margin:6px auto;max-width:56ch;color:var(--muted);line-height:1.7}
+.farewell .sig{margin-top:12px;font-size:17px;font-weight:800;color:var(--high);letter-spacing:.02em}
 .locked{position:relative;border:1px dashed var(--line);border-radius:14px;padding:30px 20px;text-align:center;background:
   repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(255,140,66,.05) 10px,rgba(255,140,66,.05) 20px),var(--panel)}
 .btn{font-family:var(--sans);font-weight:700;font-size:15px;border:none;border-radius:10px;padding:12px 22px;cursor:pointer;
@@ -139,7 +153,7 @@ details.finding[open]>summary .chev{transform:rotate(90deg)}
       <thead><tr><th>Nhóm</th><th>Chi phí/Input</th><th>Memory/Ctx</th><th>Cache</th><th>Rate-limit</th><th>File độc hại</th><th>Injection+Leak</th><th>Load/Race</th></tr></thead>
       <tbody></tbody></table></div>
     <div class="legend"><span><i class="dot" style="background:var(--good)"></i>PASS/phòng thủ tốt</span><span><i class="dot" style="background:var(--med)"></i>lưu ý/một phần</span><span><i class="dot" style="background:var(--crit)"></i>FAIL/lỗ hổng</span><span><i class="dot" style="background:var(--panel2)"></i>không áp dụng/không test được</span></div>
-    <p class="cite" style="margin-top:10px">Nhóm scan-only <b>P-143</b> (prompt injection gián tiếp qua OCR, context overflow; có cache theo tenant + theo dõi chi phí) và <b>P-140</b> (boilerplate — chưa có logic thật) được đánh giá battery từ <b>mã nguồn</b> vì không có deploy live. Chi tiết ở báo cáo nhóm.</p>
+    <p class="cite" style="margin-top:10px">Nhóm không-deploy <b>P-143</b>, <b>P-140</b> (và <b>P-010</b>) được <b>dựng chạy LOCAL</b> (docker/venv, mock LLM in-process) để test ĐỘNG battery này. P-143: injection thật ở đường <b>đối soát</b> (FINDING-09, không phải OCR — OCR là code chết), context 40KB không cắt, <b>answer-cache theo tenant (tốt)</b>. P-140: boilerplate chưa nối LLM (context/cache = N/A). Chi tiết ở báo cáo nhóm.</p>
   </section>
 
   <section>
@@ -174,6 +188,7 @@ details.finding[open]>summary .chev{transform:rotate(90deg)}
       <p class="cite" style="max-width:48ch;margin:0 auto 16px">Nội dung khắc phục chi tiết dành cho các nhóm. Nhấn để mở khoá.</p>
       <button class="btn" id="unlockbtn">🔓 Mở khoá phần Khuyến nghị</button>
     </div>
+    <div id="recs" hidden></div>
   </section>
 
   <section>
@@ -222,7 +237,7 @@ const TEAMS=[
     exp:"Tự ký token ADMIN → tạo user ADMIN mới (cửa hậu), đọc/xoá toàn bộ; 15/15 user lộ PII.",
     ref:"https://cwe.mitre.org/data/definitions/321.html"},
    {t:"MinIO dùng credential mặc định",sev:"Critical",cat:"Auth/Secret",code:"CWE-798 / CWE-1392 · OWASP A05:2021",
-    def:"Object storage mở ra Internet dùng tài khoản mặc định <REDACTED_MINIO_USER>:**** (hardcode trong config).",
+    def:"Object storage mở ra Internet dùng tài khoản mặc định của MinIO (user/password mặc định — đã che; hardcode trong config).",
     inp:"S3 list_buckets() với default creds",
     out:"OK → 98 object video dashcam tài xế (sinh trắc khuôn mặt) đọc/ghi/xoá được",
     exp:"Đọc/xoá toàn bộ bằng chứng an toàn; rò rỉ dữ liệu sinh trắc.",
@@ -259,9 +274,9 @@ const TEAMS=[
     ref:"https://genai.owasp.org/llmrisk/llm01-prompt-injection/"}
   ]},
  {id:"P-010",name:"VinStay",method:"Scan + động local",link:"repo + dựng local",
-  counts:{Critical:0,High:2,Medium:3,Low:2,Info:0},
-  cat:{"Auth/Secret":"High","Agentic/LLM":"Medium","IDOR/Permission":"Info","Logic/Race":null,"DoS/Tải":null,"Data integrity":"High"},
-  highlight:"JWT forge XÁC NHẬN ĐỘNG→chiếm admin; commit Chrome profile (cookie+mật khẩu thật); gap bộ lọc chỉ chạy khi tainted",
+  counts:{Critical:0,High:2,Medium:3,Low:3,Info:0},
+  cat:{"Auth/Secret":"High","Agentic/LLM":"Medium","IDOR/Permission":"Info","Logic/Race":null,"DoS/Tải":"Low","Data integrity":"High"},
+  highlight:"JWT forge XÁC NHẬN ĐỘNG→chiếm admin; commit Chrome profile (cookie+mật khẩu thật); gap bộ lọc chỉ chạy khi tainted; FINDING-07 không trần token/chi phí",
   findings:[
    {t:"Giả mạo JWT phiên → chiếm quyền admin (XÁC NHẬN ĐỘNG)",sev:"High",cat:"Auth/Secret",code:"CWE-798 / CWE-321 · OWASP API2:2023",
     def:"Khi NODE_ENV≠production hoặc JWT_SECRET trống, khóa HMAC được suy ra CHỈ từ giá trị công khai trong repo (JWT_SECRET trống + AES mẫu đã commit) ⇒ ai đọc source đều tự ký token hợp lệ.",
@@ -298,20 +313,37 @@ const TEAMS=[
     exp:"Nếu nối LLM thật + lộ trực tiếp: lạm dụng quota/chi phí. Độ nhạy model thật chưa đo (LLM mock).",ref:"https://genai.owasp.org/"},
    {t:"Swagger /api/docs bật vô điều kiện",sev:"Info",cat:"Auth/Secret",code:"CWE-200",
     def:"Tài liệu API mở ở mọi môi trường.",inp:"(scan code)",out:"Lộ bề mặt API",
-    exp:"Hỗ trợ trinh sát.",ref:"https://cwe.mitre.org/data/definitions/200.html"}
+    exp:"Hỗ trợ trinh sát.",ref:"https://cwe.mitre.org/data/definitions/200.html"},
+   {t:"Thiếu kế toán/trần token-chi phí LLM per-user (động, FINDING-07)",sev:"Low",cat:"DoS/Tải",code:"CWE-770 · OWASP LLM10:2025",
+    def:"Token được tính & log mỗi lượt rồi vứt bỏ — không cộng dồn, không ngưỡng theo người dùng/phiên, không set max_tokens; không cache đáp án (request trùng = 1 suy luận trả phí đầy).",
+    inp:"(động local, mock) 6 request cỡ tối đa cùng caller + 5 request trùng",
+    out:"6/6 = 200 (không cap chi phí); request trùng gọi mock đủ 5 lần (không cache LLM)",
+    steps:["Dựng stack local + mock LLM đếm lần gọi","Gửi nhiều request lớn từ 1 tài khoản → quan sát không có trần","Gửi cùng 1 request 5 lần → mock bị gọi 5 lần (không cache đáp án)"],
+    impact:"Người đã đăng nhập không có trần chi phí tích luỹ; mỗi truy vấn trùng tốn 1 suy luận trả phí. Giảm nhẹ: cap input 20×2000 + MAX_TOOL_ROUNDS=5 + throttle 20/60s + quota khách 2/24h.",
+    ref:"https://genai.owasp.org/llmrisk/llm10-unbounded-consumption/"}
   ]},
  {id:"P-143",name:"OCR hoá đơn",method:"Scan + động local",link:"dựng local (docker compose)",
-  counts:{Critical:0,High:1,Medium:2,Low:4,Info:2},
-  cat:{"Auth/Secret":"Medium","Agentic/LLM":"High","IDOR/Permission":"Info","Logic/Race":null,"DoS/Tải":"Medium","Data integrity":null},
-  highlight:"Prompt injection gián tiếp qua OCR (tĩnh); context overflow; /auth/login không rate-limit + lockout không atomic (12/15 lọt)",
+  counts:{Critical:0,High:0,Medium:3,Low:4,Info:3},
+  cat:{"Auth/Secret":"Medium","Agentic/LLM":"Medium","IDOR/Permission":"Info","Logic/Race":null,"DoS/Tải":"Medium","Data integrity":null},
+  highlight:"ĐỊNH VỊ LẠI (động): OCR injection là code chết → vector thật FINDING-09 đối soát (Medium, giảm nhẹ mạnh); context 40KB không cắt; rate-limit/lockout; answer-cache theo tenant (tốt)",
   findings:[
-   {t:"Prompt injection gián tiếp qua OCR/PDF",sev:"High",cat:"Agentic/LLM",code:"OWASP LLM01:2025",
-    def:"Văn bản OCR/PDF người dùng upload nối thẳng vào user-prompt LLM, không rào/khử.",
-    inp:"(scan code) llm_strategies.py nối text OCR",out:"Chỉ dẫn nhúng trong hoá đơn điều khiển LLM",
-    exp:"Thao túng trích xuất; tiền đề cho sai lệch nghiệp vụ.",ref:"https://genai.owasp.org/llmrisk/llm01-prompt-injection/"},
-   {t:"Context overflow / tiêu thụ không giới hạn",sev:"Medium",cat:"DoS/Tải",code:"OWASP LLM10:2025",
-    def:"Chữ mọi trang nối 1 prompt, không giới hạn input.",inp:"(scan code)",out:"Prompt phình theo tài liệu",
-    exp:"Đốt token/chi phí; có thể DoS.",ref:"https://genai.owasp.org/"},
+   {t:"FINDING-09: injection gián tiếp qua trường hoá đơn → prompt đối soát (động)",sev:"Medium",cat:"Agentic/LLM",code:"OWASP LLM01/LLM07 · CWE-77",
+    def:"Đường ĐỐI SOÁT (`reconciliation/acl/gateway.py` `_describe`/`_describe_offers`) nối THẲNG mô tả/mã hàng do người dùng kiểm soát vào user-message gửi LLM (L4 arbiter + PO chooser), KHÔNG delimiter, KHÔNG khử.",
+    inp:"(động, mock in-process) mô tả hoá đơn chứa payload tiêm",
+    out:"Payload nằm nguyên văn ngay dưới system prompt (bắt được prompt động); injection có thể ép echo system prompt vào trường `reason`",
+    steps:["Dựng docker compose + gắn mock LLM bằng monkeypatch SDK in-process (sitecustomize ngoài repo)","Tạo hoá đơn có mô tả/mã hàng chứa chỉ dẫn tiêm","Chạy đối soát → mock ghi lại prompt app gửi","Quan sát: payload lọt nguyên văn vào user-message, không rào"],
+    impact:"GIẢM NHẸ MẠNH (nên Medium, không Critical): model chỉ CHỌN từ danh sách ứng viên dựng code-side, tiền do code tính, confidence_gates_acceptance=false, LUÔN có người duyệt → không bơm giá trị tuỳ ý vào sổ. Cần tách dữ liệu/chỉ dẫn + khử.",
+    ref:"https://genai.owasp.org/llmrisk/llm01-prompt-injection/"},
+   {t:"Context overflow đường đối soát (xác nhận động)",sev:"Medium",cat:"DoS/Tải",code:"OWASP LLM10:2025 · CWE-770",
+    def:"Đường đối soát KHÔNG cắt input: mô tả ~40KB đi nguyên vẹn vào prompt arbiter.",inp:"(động) mô tả 39.912 ký tự",out:"Prompt phình tuyến tính (~3600 token chèn), không bị cắt",
+    exp:"Đốt token/chi phí; có thể DoS. Cần giới hạn độ dài input.",ref:"https://genai.owasp.org/llmrisk/llm10-unbounded-consumption/"},
+   {t:"OCR injection (FINDING-01 cũ) — CODE CHẾT (định vị lại động)",sev:"Info",cat:"Agentic/LLM",code:"đã bác bỏ động",
+    def:"Mã tĩnh FINDING-01 trích dẫn (`llm_strategies.map_fields` nối text OCR) chỉ còn trong tests, KHÔNG wire vào app. Đường trích xuất chạy thật là VISION (ảnh), prompt text cố định, không nối chữ, không tools.",
+    inp:"(động) tài liệu nhiễm độc qua đường trích xuất vision",out:"Không nối chữ vào prompt → injection OCR không áp dụng cho đường live",
+    exp:"Điều chỉnh: rủi ro injection chuyển sang đường đối soát (FINDING-09), không phải OCR.",ref:"https://genai.owasp.org/llmrisk/llm01-prompt-injection/"},
+   {t:"Answer-cache theo tenant (xác nhận động)",sev:"Good",cat:"Agentic/LLM",code:"điểm cộng",
+    def:"Đối soát có answer-cache khóa theo tenant (`arbiter-v2:<sha256(prompt)>`).",inp:"(động) 2 hoá đơn khác số, cùng nội dung",out:"Lần 2 CACHE HIT, mock không gọi lại (delta=0), ai_calls: cache_hit=t cost 0",
+    exp:"Điểm cộng: tiết kiệm chi phí LLM + không cache chéo tenant.",ref:"https://genai.owasp.org/llmrisk/llm10-unbounded-consumption/"},
    {t:"/auth/login không rate-limit + lockout không atomic (động)",sev:"Medium",cat:"Auth/Secret",code:"CWE-307 / CWE-367 · OWASP API4",
     def:"Không có rate-limit tầng ứng dụng ở /auth/login; bộ đếm thất bại cho cơ chế lockout không atomic (TOCTOU) — nhóm tự thừa nhận trong iam/README.",
     inp:"(động local) 120 login nhanh + 15 login sai đồng thời",
@@ -340,7 +372,7 @@ const TEAMS=[
     ref:"https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/"},
    {t:"Mật khẩu khởi tạo dùng chung, đoán được",sev:"High",cat:"Auth/Secret",code:"CWE-521 / CWE-1392 · OWASP A07:2021",
     def:"Mọi nhân viên tạo từ intake dùng chung mật khẩu ban đầu (code tự thừa nhận 'ai biết email là đăng nhập được').",
-    inp:"login(email_nhân_viên, '<REDACTED_PASSWORD>')",out:"Đăng nhập được tới khi nạn nhân đổi",
+    inp:"login(email_nhân_viên, '<mật khẩu khởi tạo dùng chung — đã che>')",out:"Đăng nhập được tới khi nạn nhân đổi",
     exp:"Biết email nhân viên = chiếm tài khoản, đọc hồ sơ/ tài liệu nội bộ.",ref:"https://cwe.mitre.org/data/definitions/521.html"},
    {t:"Bộ phát hiện prompt-injection regex quá hẹp",sev:"Medium",cat:"Agentic/LLM",code:"OWASP LLM01:2025 · CWE-20",
     def:"injection_reason chỉ 8 regex keyword trên text bỏ dấu; né bằng đồng nghĩa/đa ngôn ngữ/mã hoá.",
@@ -422,11 +454,13 @@ const TEAMS=[
 // battery matrix: p=pass, w=warn/partial, f=fail, n=n/a
 const BATTERY=[
  {id:"P-136",cells:["n","n","n","f","w","w","f"],note:"ingestion không auth/rate-limit; ghi sụp; race 5 ca"},
- {id:"P-010",cells:["n","n","n","p","n","n","n"],note:"LLM upstream 503 trên deploy → không test được injection/chi phí động; throttle+guest-quota OK, XFF không bypass, swagger /api/docs 404 ở live. Rủi ro chính ở scan code."},
+ {id:"P-010",cells:["w","p","w","p","n","w","w"],note:"dựng local + mock LLM: context stateless cap 20×2000 (tốt); FINDING-07 không trần token/chi phí + không cache đáp án (w); injection gián tiếp + gap bộ lọc tainted (w); throttle+quota OK; JWT forge chiếm admin (scan+động)."},
  {id:"P-047",cells:["p","p","p","w","p","p","p"],note:"tốt; chat thiếu global throttle (user-key OK); load read+write êm, 429 backpressure"},
  {id:"P-075",cells:["p","p","p","p","p","p","p"],note:"chắc nhất; VLM whitelist, advisory lock"},
  {id:"P-123",cells:["p","p","p","f","p","p","w"],note:"rate-limit login fail ở live; perf N+1"},
- {id:"P-145",cells:["p","p","p","f","p","w","p"],note:"thiếu rate-limit; detector INTAKE bypass 9/9; chat RAG e2e PASS (phòng thủ 5 tầng)"}
+ {id:"P-145",cells:["p","p","p","f","p","w","p"],note:"thiếu rate-limit; detector INTAKE bypass 9/9; chat RAG e2e PASS (phòng thủ 5 tầng)"},
+ {id:"P-143",cells:["w","w","p","f","p","w","p"],note:"dựng local + mock in-process: FINDING-09 injection đối soát (giảm nhẹ) + context 40KB không cắt (w); answer-cache tenant (tốt); rate-limit/lockout fail (f); XXE fail-safe; load/race sạch"},
+ {id:"P-140",cells:["n","n","n","w","p","n","w"],note:"dựng local: LLM chưa nối → ctx/cache N/A; /chat không auth + body không giới hạn → DoS (w); malformed→422 fail-safe; load read êm"}
 ];
 const LOAD=[{c:1,p50:485.7,p95:560.3,p99:600.2},{c:5,p50:486.2,p95:618.1,p99:773.2},{c:10,p50:468.5,p95:497.1,p99:505.6},{c:20,p50:492.2,p95:509.6,p99:514.4},{c:35,p50:490.8,p95:521.5,p99:534.0},{c:50,p50:518.2,p95:572.0,p99:575.9}];
 
@@ -576,6 +610,73 @@ document.getElementById('unlockbtn').addEventListener('click',()=>{
    close.hidden=false;}};
  setTimeout(tick,reduce?0:180);
 });
-document.getElementById('mclose').addEventListener('click',()=>modal.classList.remove('on'));
+// ===== khuyến nghị chi tiết (lộ ra khi bấm Đóng) =====
+const RECS=[
+ {id:"P-136",name:"DriverGuard",items:[
+  {t:"Giả mạo JWT → chiếm ADMIN",sev:"Critical",fix:"Xoay <b>JWT_SECRET</b> ngẫu nhiên ≥256-bit, CHỈ nạp từ env/secret manager, fail-fast khi trống; bỏ mọi giá trị mặc định trong mã; cân nhắc RS256 để tách khóa ký/kiểm."},
+  {t:"MinIO dùng credential mặc định",sev:"Critical",fix:"Đổi root user/password MinIO; <b>đóng cổng 9000</b> khỏi Internet (chỉ cho backend nội bộ); tạo access key riêng theo bucket với quyền tối thiểu; bật TLS."},
+  {t:"Ingestion telemetry/alert không auth",sev:"High",fix:"Yêu cầu xác thực thiết bị (API key/mTLS/JWT thiết bị) cho /telemetry/gps + /alert; rate-limit theo thiết bị; validate chặt payload."},
+  {t:"BOLA: xem GPS/lịch sử mọi xe",sev:"High",fix:"Kiểm quyền theo đối tượng ở tầng query — chỉ cho tài xế xem xe thuộc về mình (so khớp owner_id với user đang đăng nhập)."},
+  {t:"DoS: bề mặt ghi sụp dưới tải nhỏ",sev:"High",fix:"Reverse-geocoding <b>bất đồng bộ/hàng đợi</b> (không chặn request); cache theo toạ độ; nhiều worker + timeout ngắn; thêm auth + rate-limit cho ingestion."},
+  {t:"Race TOCTOU khi nhận ca/gán xe",sev:"High",fix:"<b>Unique constraint</b> (driver_id, status=ACTIVE) ở DB + transaction SELECT…FOR UPDATE hoặc atomic upsert — đừng check rồi mới insert."},
+  {t:"Prompt injection lưu trữ qua tên tài xế",sev:"Medium",fix:"Tách dữ liệu người dùng khỏi chỉ dẫn (đưa vào vùng data có nhãn ranh giới), không nối thẳng vào system prompt; khử/escape; cân nhắc hậu kiểm output."}]},
+ {id:"P-010",name:"VinStay",items:[
+  {t:"Giả mạo JWT → chiếm admin",sev:"High",fix:"Ép <b>NODE_ENV=production + JWT_SECRET thật</b> (≥256-bit) trong mọi pipeline; fail-fast khi rơi vào dev-fallback ở prod; không suy khóa từ hằng số trong repo."},
+  {t:"Commit nguyên Chrome profile",sev:"High",fix:"<b>git rm -r --cached</b> 'tech data/'; purge lịch sử git (git-filter-repo/BFG); <b>xoay mọi credential đã lộ</b> (cookie/mật khẩu); thêm .gitignore."},
+  {t:"Khóa gốc mẫu 'trông như thật'",sev:"Medium",fix:"Từ chối khởi động nếu khóa == giá trị mẫu trong .env.example; sinh khóa ngẫu nhiên; lưu ở secret manager."},
+  {t:"Injection residual + gap bộ lọc tainted",sev:"Medium",fix:"Áp bộ lọc/hậu kiểm <b>vô điều kiện</b> lên câu trả lời cuối (không chỉ khi tainted); mở rộng ngoài 4 luật cứng bằng allow-list + LLM-judge/heuristic."},
+  {t:"/assistant/chat quota bypass XFF",sev:"Low",fix:"Không tin X-Forwarded-For từ client; lấy IP từ proxy tin cậy; đặt quota theo tài khoản/phiên thay vì chỉ IP."},
+  {t:"Thiếu kế toán token/chi phí (FINDING-07)",sev:"Low",fix:"Set <b>max_tokens</b> mỗi lượt; cộng dồn + giới hạn token/chi phí theo người dùng/phiên; cache đáp án cho truy vấn trùng; gắn danh tính người dùng vào ai-engine."},
+  {t:"Swagger /api/docs luôn bật",sev:"Info",fix:"Tắt /api/docs ở production (chỉ bật theo env dev)."}]},
+ {id:"P-143",name:"OCR hoá đơn",items:[
+  {t:"FINDING-09: injection gián tiếp qua trường hoá đơn → prompt đối soát",sev:"Medium",fix:"Tách mô tả/mã hàng người dùng (không tin cậy) khỏi chỉ dẫn trong `reconciliation/acl/gateway.py` — <b>delimiter + nhãn 'dữ liệu, không phải lệnh'</b>; cân nhắc hậu kiểm/LLM-judge. (Đường OCR hiện an toàn: vision, không nối chữ — mã OCR-injection cũ là code chết.)"},
+  {t:"Context overflow đường đối soát (40KB không cắt)",sev:"Medium",fix:"Giới hạn độ dài mô tả/input trước khi vào prompt arbiter; cắt/tóm tắt có kiểm soát; đặt trần token mỗi yêu cầu."},
+  {t:"/auth/login không rate-limit + lockout không atomic",sev:"Medium",fix:"Thêm rate-limit tầng app ở /auth/login; làm bộ đếm lockout <b>atomic</b> (khóa hàng/CAS/redis INCR) để tránh TOCTOU."},
+  {t:"Secret/infra mặc định",sev:"Low",fix:"Ép override JWT_SECRET/DB/MinIO ở prod (fail-fast nếu còn giá trị mặc định)."}]},
+ {id:"P-145",name:"Onboarding HR RAG",items:[
+  {t:"Mật khẩu khởi tạo dùng chung",sev:"High",fix:"Sinh <b>mật khẩu ngẫu nhiên từng người</b> khi tạo qua intake; ép đổi mật khẩu lần đầu; gửi qua kênh an toàn."},
+  {t:"Detector prompt-injection regex quá hẹp",sev:"Medium",fix:"Thay regex-keyword bằng tách cấu trúc + hậu kiểm/LLM-judge; đừng dựa vào bỏ-dấu + danh sách từ khóa cố định."},
+  {t:"Thiếu rate-limit toàn cục",sev:"Medium",fix:"Thêm rate-limit + lockout cho login và endpoint LLM/OCR; throttle theo tài khoản/IP tin cậy."},
+  {t:"Chat RAG e2e (điểm cộng)",sev:"Good",fix:"Giữ nguyên phòng thủ nhiều tầng (screen query/chunk, ngưỡng similarity, gate biến động, grounded-prompt) — đây là mẫu tốt nên duy trì."}]},
+ {id:"P-047",name:"MoveInMate",items:[
+  {t:"/auth/reset wipe-app không auth",sev:"Medium",fix:"Yêu cầu quyền admin/manager cho /auth/reset (hoặc tắt ở prod); thêm bước xác nhận + ghi audit."},
+  {t:"Validation trước authz",sev:"Low",fix:"Kiểm authz TRƯỚC khi validate input để không rò thông tin tồn tại tài nguyên."},
+  {t:"Chat thiếu throttle toàn cục",sev:"Low",fix:"Thêm rate-limit toàn cục cho chat/LLM theo người dùng/IP."}]},
+ {id:"P-140",name:"(boilerplate)",items:[
+  {t:"/api/v1/chat không auth + không giới hạn body",sev:"Medium",fix:"Thêm auth + rate-limit; <b>giới hạn kích thước body TRƯỚC khi parse</b> (kiểm Content-Length/streaming limit, không để parse 200MB rồi mới 422); nhiều worker."},
+  {t:"Thiếu security headers",sev:"Info",fix:"Thêm X-Content-Type-Options=nosniff, X-Frame-Options, Content-Security-Policy, HSTS."}]},
+ {id:"P-123",name:"GreenCar",items:[
+  {t:"Rate-limit login không hiệu lực ở prod",sev:"Medium",fix:"Rate-limit theo <b>tài khoản</b> (không chỉ IP, vì proxy Render phân mảnh IP); lấy IP thật từ proxy tin cậy; thêm lockout."},
+  {t:"/analyze Denial-of-Wallet",sev:"Low",fix:"Giới hạn tần suất + chi phí gọi Gemini theo người dùng; cache kết quả trích xuất."},
+  {t:"Email intake injection (giảm nhẹ tốt)",sev:"Low",fix:"Tiếp tục tách dữ liệu email khỏi chỉ dẫn (đang làm tốt — tắt function-calling, output schema); giám sát bất thường."}]},
+ {id:"P-075",name:"BeeWork VLM",items:[
+  {t:"Demo-login còn bật",sev:"Low",fix:"Tắt demo-login ở production; rà soát cấu hình prod. Phần còn lại là mẫu tốt (session+PBKDF2, ownership chặt, VLM whitelist, advisory lock) — nên giữ."}]}
+];
+function renderRecs(){
+ if(document.getElementById('recs').dataset.done)return;
+ const sevc={Critical:"crit",High:"high",Medium:"med",Low:"low",Info:"info",Good:"good"};
+ const order=[...RECS];
+ const cards=order.map(T=>{
+   const items=T.items.map(it=>`<div class="recitem"><div class="rt"><span class="badge b-${sevc[it.sev]||'good'}">${it.sev}</span> ${esc(it.t)}</div><div class="rf"><b>Khắc phục:</b> ${it.fix}</div></div>`).join('');
+   return `<div class="reccard"><h3>${T.id} · ${esc(T.name)}</h3>${items}</div>`;}).join('');
+ document.getElementById('recs').innerHTML=
+  `<div class="farewell">
+     <h3>Cảm ơn cả nhà 💛</h3>
+     <p>Sắp đến lúc phải nói tạm biệt rồi. Cảm ơn các nhóm đã cho mình đồng hành review lần này — mỗi lỗ hổng tìm ra là một bước các bạn mạnh hơn.</p>
+     <p>Chúc mọi người <b>thành công trên đoạn đường sắp tới</b> — giữ vững tinh thần làm sản phẩm an toàn, và đừng bao giờ ngủ quên trên chiến thắng nhé.</p>
+     <div class="sig">Yêu G-03 ❤❤❤</div>
+   </div>
+   <div class="sec-h" style="margin-top:4px"><h2>Khuyến nghị khắc phục — chi tiết từng lỗ hổng</h2><span class="sub">theo nhóm · ưu tiên theo severity</span></div>
+   ${cards}`;
+ document.getElementById('recs').dataset.done="1";
+}
+function revealRecs(){
+ modal.classList.remove('on');
+ renderRecs();
+ const r=document.getElementById('recs');r.hidden=false;
+ const lk=document.querySelector('.locked');if(lk)lk.style.display='none';
+ r.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});
+}
+document.getElementById('mclose').addEventListener('click',revealRecs);
 modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('on');});
 </script>

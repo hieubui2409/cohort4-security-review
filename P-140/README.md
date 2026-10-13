@@ -236,3 +236,11 @@ Dựng được (CÓ, không cần key, LLM chưa nối). Test động đã ch�
 - `03_cors_headers_bodysize.txt` — CORS header (case-insensitive), security headers, đo body-size DoS.
 - `04_load_test.txt` — load test read/write ramp tới conc=50.
 - Script: `scripts/dyn_probe.py`, `scripts/load_test.py` (chạy `python -I <script> <base_url>`, stdlib, ngoài repo).
+
+### Context / memory / caching / cost — N/A (không có bề mặt, xác nhận từ mã nguồn)
+Đã kiểm `src/api/routes.py`, `src/agents/graph.py`, `src/agents/nodes/example_node.py`, `src/services/llm.py`:
+- **LLM chưa nối**: graph chạy `example_node` (echo), KHÔNG gọi `services/llm.py` (`ChatOpenAI`) — khớp kết luận test động trước ("LLM chưa được nối").
+- **Không có memory/history/session/conversation**: `/chat` stateless, không lưu lượt trước.
+- **Không caching request**: `@lru_cache` chỉ áp cho `get_settings()` (config), không cho request chat.
+- **Không cost/token accounting**: không có đếm/giới hạn token.
+→ Các mục agentic này **không áp dụng** cho bản hiện tại vì chưa có bề mặt (goal: "mọi nhóm **có bề mặt tương ứng**"). Phải test lại khi nhóm nối LLM/memory/cache thật. Đây là *N/A có cơ sở*, không phải "bỏ sót".

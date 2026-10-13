@@ -1,0 +1,3 @@
+po_number,vendor_tax_code,vendor_name,po_date,delivery_due_date,status,currency,line_no,item_code,description,uom,quantity,unit_price,tax_rate,item_category,cost_center
+PO-SECTEST-INJ1,0312345678,Cong ty TNHH ABC,2026-09-01,2026-09-30,OPEN,VND,1,LOP-MICH-STD,Lop Michelin 185/65R15 chinh hang,cái,20,1380000,10%,Vat tu,CC1
+PO-SECTEST-INJ1,0312345678,Cong ty TNHH ABC,2026-09-01,2026-09-30,OPEN,VND,2,DV-CANCHINH-STD,Dich vu can chinh thuoc lai tieu chuan,lần,5,850000,8%,Dich vu,CC1

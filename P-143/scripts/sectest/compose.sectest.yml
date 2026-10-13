@@ -1,0 +1,30 @@
+# P-143 SECURITY TEST overlay — lives OUTSIDE the repo (scratchpad). Merged with
+# deploy/compose.yml via:  docker compose -f deploy/compose.yml -f <this> ...
+# It only (1) mounts the external mock shim read-only, (2) points PYTHONPATH at it
+# so CPython auto-imports sitecustomize at startup (in-process LLM mock, no network),
+# (3) sets a dummy OPENROUTER_API_KEY so the app builds the LLM/OCR/vision providers,
+# (4) turns on the LLM PO chooser. No repo source is changed.
+services:
+  backend:
+    environment:
+      PYTHONPATH: /sectest/shim
+      OPENROUTER_API_KEY: sk-sectest-mock-0000
+      SECTEST_LLM_LOG: /sectest/out/llm_calls.jsonl
+      RETRIEVAL_LLM: "true"
+      MODEL_NAME: mock/sectest-llm
+      OCR_MODEL_NAME: mock/sectest-vision
+    volumes:
+      - /tmp/claude-1000/-home-hieubt15-Documents-demo-review-cohort4/89e739cb-2232-49ef-9048-a9a0cec0ca34/scratchpad/sectest/shim:/sectest/shim:ro
+      - /tmp/claude-1000/-home-hieubt15-Documents-demo-review-cohort4/89e739cb-2232-49ef-9048-a9a0cec0ca34/scratchpad/sectest/out:/sectest/out
+
+  worker:
+    environment:
+      PYTHONPATH: /sectest/shim
+      OPENROUTER_API_KEY: sk-sectest-mock-0000
+      SECTEST_LLM_LOG: /sectest/out/llm_calls.jsonl
+      RETRIEVAL_LLM: "true"
+      MODEL_NAME: mock/sectest-llm
+      OCR_MODEL_NAME: mock/sectest-vision
+    volumes:
+      - /tmp/claude-1000/-home-hieubt15-Documents-demo-review-cohort4/89e739cb-2232-49ef-9048-a9a0cec0ca34/scratchpad/sectest/shim:/sectest/shim:ro
+      - /tmp/claude-1000/-home-hieubt15-Documents-demo-review-cohort4/89e739cb-2232-49ef-9048-a9a0cec0ca34/scratchpad/sectest/out:/sectest/out

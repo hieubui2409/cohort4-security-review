@@ -53,3 +53,9 @@ Handoff nằm ở `./handoff/{T-047,T-075,T-123,T-136,T-145}`. T-xxx = P-xxx (c�
 - **Nội dung:** README tổng hợp (redacted) + `security-report.html` + READMEs từng nhóm (redacted) + **scripts PoC (redacted mạnh)**.
 - **Mức redaction (MẠNH):** xoá mật khẩu/token/JWT secret/MinIO creds/IP/URL deploy/PII + **payload khai thác hoạt động** (mô tả thay vì tái hiện nguyên văn); GIỮ mô tả lỗ hổng + CWE/OWASP + input-output đã che.
 - **Thời điểm:** tạo & push SAU KHI hoàn tất các test động đang chạy (P-145 e2e + subagent P-143/P-140/P-010 local).
+
+## 2026-10-13 — Chốt mục "phán quyết model thật dưới injection"
+- Mentor **CHẤP NHẬN là giới hạn đã ghi nhận**: độ nhạy nội tại của model proprietary dưới injection cho **P-075** (VLM chạy `mock`) và **P-143** (OpenRouter URL hard-code HTTPS, không có key) KHÔNG đo được vì cần API key trả phí ở staging — ngoài tầm của reviewer.
+- Đã kiểm đầy đủ: toàn bộ **tầng phòng thủ QUANH model** cho mọi nhóm (whitelist strip, grounding "references are data", taint-filter, screen chunk, ngưỡng similarity, gate chủ đề biến động).
+- **P-123**: model Gemini thật ĐÃ quan sát được (chuẩn hoá khiếu nại, không lộ system prompt) → không còn là gap.
+- Review **coi như HOÀN TẤT** trong phạm vi được cấp phép + khôi phục được.

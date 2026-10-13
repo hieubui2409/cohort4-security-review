@@ -1,10 +1,10 @@
 # Cohort 4 — Báo cáo rà soát bảo mật (bản công khai, đã redact)
 
-> ⚠️ **Bản công khai đã REDACT MẠNH.** Đã loại bỏ: mật khẩu, token, JWT secret, credential MinIO, IP, hostname deploy, email/PII — thay bằng `<REDACTED_*>`. Thư mục `evidences/` (log/JSON/ảnh bằng chứng thô chứa token & PII) **không** được đưa lên bản công khai; chỉ giữ nội bộ. Scripts PoC giữ lại kỹ thuật nhưng đã gỡ credential/target nên **không chạy trực tiếp** được.
+> ⚠️ **Bản công khai đã REDACT MẠNH.** Đã loại: mật khẩu, token, JWT secret, credential MinIO, IP, hostname deploy, email/PII — thay bằng `<REDACTED_*>`. Thư mục `evidences/` (log/JSON/ảnh thô chứa token & PII) **không** đưa lên công khai; chỉ giữ nội bộ. Scripts PoC giữ kỹ thuật nhưng đã gỡ credential/target → **không chạy trực tiếp** được.
 >
 > 📊 **Báo cáo trực quan (artifact công khai):** https://claude.ai/artifact/RkBfcb3Nh9ow4MM7j9Gogw
 >
-> Rà soát được **mentor ủy quyền** trên chính dự án của 8 nhóm; môi trường test, dữ liệu do sinh viên tạo. Mọi tấn công có kiểm soát + đảo ngược; bản ghi test gắn `SECTEST-` kèm cơ chế dọn.
+> Rà soát được **mentor ủy quyền** trên chính dự án của 8 nhóm; môi trường test, dữ liệu do sinh viên tạo. Tấn công có kiểm soát + đảo ngược; bản ghi test gắn `SECTEST-` kèm cơ chế dọn. Review đã **hoàn tất trong phạm vi được cấp phép** (xem §7 + goal.md §9).
 
 ---
 
@@ -24,9 +24,9 @@
 | Hạng | Nhóm | Phương pháp | Critical | High | Medium | Low/Info | Điểm nổi bật |
 |---|---|---|:--:|:--:|:--:|:--:|---|
 | 🔴 1 | **P-136** | API động | **2** | **2** | 2 | + | Giả mạo JWT → chiếm ADMIN; MinIO default creds; ingestion không auth; BOLA; **race nhận ca (5 ca ACTIVE đồng thời)** |
-| 🟠 2 | **P-010** | Scan + **động local** | 0 | **2** | **3** | 2 | **JWT forge XÁC NHẬN ĐỘNG → chiếm admin** `/admin/field-hosts`; commit Chrome profile (cookie+mật khẩu thật); **gap mới: bộ lọc chỉ chạy khi `tainted`** |
-| 🟠 3 | **P-143** | Scan + **động local** | 0 | **1** | **2** | 5 | Prompt injection gián tiếp qua OCR (tĩnh); context overflow; **mới: `/auth/login` không rate-limit + lockout không atomic (12/15 lọt)** |
-| 🟡 4 | **P-145** | API động + **e2e** | 0 | **1** | 2 | + | Mật khẩu khởi tạo dùng chung; detector injection bypass 9/9; thiếu rate-limit. **Chat RAG e2e injection: PASS (phòng thủ 5 tầng)** |
+| 🟠 2 | **P-010** | Scan + **động local** | 0 | **2** | **3** | 3 | **JWT forge XÁC NHẬN ĐỘNG → chiếm admin** `/admin/field-hosts`; commit Chrome profile (cookie+mật khẩu thật); gap bộ lọc `tainted`; **FINDING-07: không trần token/chi phí per-user** |
+| 🟡 3 | **P-145** | API động + **e2e** | 0 | **1** | 2 | + | Mật khẩu khởi tạo dùng chung; detector injection bypass 9/9; thiếu rate-limit. **Chat RAG e2e injection: PASS (phòng thủ 5 tầng)** |
+| 🟡 4 | **P-143** | Scan + **động local** | 0 | 0 | **3** | 5 | **Định vị lại (động):** FINDING-01 OCR là **code chết**; vector thật = **FINDING-09 injection đối soát** (Medium, giảm nhẹ mạnh: model chỉ chọn từ danh sách code-side, luôn có người duyệt); context overflow 40KB; rate-limit/lockout. Caching theo tenant = điểm cộng |
 | 🟢 5 | **P-047** | API động | 0 | 0 | 1 | 2 | `/auth/reset` wipe-app không auth (chặn bằng mã tĩnh); battery PASS |
 | 🟢 6 | **P-140** | Scan + **động local** | 0 | 0 | **1** | 2 | **Mới (động): `/api/v1/chat` không auth + không giới hạn body → DoS** (max_length áp sau khi parse 200MB); thiếu security headers |
 | 🟢 7 | **P-123** | API động | 0 | 0 | **1** | 2 | Rate-limit login KHÔNG hiệu lực ở live (proxy IP); còn lại rất chắc |
@@ -55,7 +55,7 @@
 - **P-075, P-123, P-047**: nền tảng rất tốt (session/CSRF hoặc JWT chuẩn, phân quyền đối tượng chặt đã kiểm chứng động, phòng thủ prompt injection giữ vững kể cả injection gián tiếp nâng cao qua file). **Vẫn còn** điểm phải xử lý: P-047 endpoint reset-toàn-app không auth; P-123 injection email (bounded); P-075 đảm bảo tắt demo-login ở prod. Không được chủ quan.
 - **P-136**: tính năng tốt nhưng bảo mật nền tảng thủng nặng (secret/creds hardcode, thiếu auth ingestion) — **ưu tiên sửa số 1**.
 - **P-010**: logic backend NestJS khá chắc (ownership, SQL tham số hoá) nhưng bị hạ gục bởi rò rỉ secret/credential do thao tác repo — bài học về vệ sinh repo.
-- **P-143**: kiến trúc tenant/SQL tốt, nhưng lớp agentic (OCR→LLM) chưa rào injection — đúng trọng tâm cần vá.
+- **P-143**: kiến trúc tenant/SQL tốt; lớp agentic — đường OCR an toàn (vision, không nối chữ; mã OCR-injection cũ là code chết) nhưng **đường đối soát (reconciliation) chưa rào injection** (FINDING-09) — đúng trọng tâm cần vá.
 - **P-145**: kỹ thuật tốt (cookie httpOnly, grounding RAG, scope theo khoa) nhưng detector injection bằng regex quá hẹp + mật khẩu chung — hai điểm dễ sửa, giá trị cao.
 - **P-140**: mới là boilerplate; chưa đánh giá được vì chưa có logic/LLM/DB thật.
 
@@ -80,9 +80,9 @@ Chạy cho 5 nhóm có deploy (P-136 tự làm; P-047/P-075/P-123/P-145 qua suba
 - Xem mục **"Giới hạn & phần CHƯA hoàn thành"** cuối file.
 
 Phát hiện mới đáng kể (gồm đợt test động local 2026-10-13):
-- **P-010 JWT forge XÁC NHẬN ĐỘNG** (HIGH) — token giả từ giá trị public trong repo → `GET /admin/field-hosts` 200, chiếm quyền admin; **gap mới**: bộ lọc `find_violations()` chỉ chạy khi `tainted` → jailbreak không qua listing lách được.
+- **P-010 JWT forge XÁC NHẬN ĐỘNG** (HIGH) — token giả từ giá trị public trong repo → `GET /admin/field-hosts` 200, chiếm quyền admin; **gap mới**: bộ lọc `find_violations()` chỉ chạy khi `tainted` → jailbreak không qua listing lách được. **FINDING-07 (Low)**: không trần token/chi phí per-user, không `max_tokens`, không cache đáp án.
 - **P-140** (động) — `/api/v1/chat` **không auth + không giới hạn body** → DoS (MEDIUM, CWE-400/770); nhóm này trước đây tưởng "sạch".
-- **P-143** (động) — `/auth/login` không rate-limit + lockout không atomic (12/15 lọt) (CWE-307/367); load/race còn lại sạch, XXE/XML-bomb fail-safe.
+- **P-143** (động, **định vị lại**) — FINDING-01 (OCR injection) hoá ra là **code chết** (chỉ trong test); vector injection THẬT là **FINDING-09 (MEDIUM, CWE-77/LLM01)** ở đường **đối soát** (`reconciliation/acl/gateway.py` nối thẳng mô tả/mã hàng vào prompt arbiter) — giảm nhẹ mạnh (model chỉ chọn từ danh sách code-side, tiền do code tính, luôn có người duyệt). `/auth/login` không rate-limit + lockout không atomic (12/15 lọt). Load/race sạch, XXE/XML-bomb fail-safe, **answer-cache theo tenant = điểm cộng**.
 - **P-145 chat RAG e2e: PASS** — doc nhiễm độc retrieve được nhưng không lộ canary/system/tool (phòng thủ 5 tầng); detector INTAKE bypass 9/9 vẫn là MEDIUM riêng.
 - **P-123 rate-limit login không hiệu lực ở production** (MEDIUM, CWE-307 — IP sau proxy Render phân mảnh bucket).
 Điểm cộng: file-robustness fail-safe ở mọi nhóm; P-075/P-047/P-123 + chat RAG P-145 chặn prompt-injection + race tốt.
@@ -97,7 +97,7 @@ Phát hiện mới đáng kể (gồm đợt test động local 2026-10-13):
 ## 6. Khuyến nghị ưu tiên
 1. **P-136**: xoay `JWT_SECRET` (chỉ từ env, không default) + đổi root MinIO + đóng cổng 9000 + thêm auth cho ingestion + kiểm quyền theo đối tượng cho telemetry. **Gấp.**
 2. **P-010**: `git rm` thư mục `tech data/`, purge lịch sử git, **xoay mọi credential đã lộ**; ép `NODE_ENV=production` + `JWT_SECRET` thật trong mọi pipeline.
-3. **P-143**: rào prompt injection cho pipeline OCR→LLM (tách dữ liệu/chỉ dẫn, giới hạn input).
+3. **P-143**: rào prompt injection cho **đường đối soát (reconciliation)** — tách mô tả/mã hàng người dùng khỏi chỉ dẫn (delimiter + nhãn dữ liệu), giới hạn input (40KB→cắt), cân nhắc hậu kiểm. (Đường OCR hiện an toàn; mã OCR-injection cũ là code chết.)
 4. **P-145**: mật khẩu khởi tạo ngẫu nhiên từng người; thay detector regex bằng tách cấu trúc + hậu kiểm/LLM-judge.
 5. **P-047**: yêu cầu auth manager cho `/auth/reset` hoặc tắt ở prod.
 6. **P-075/P-123**: xử lý các Low; đảm bảo cấu hình prod (tắt demo-login, kiểm chéo trích xuất email).
@@ -109,7 +109,7 @@ Phần lớn khoảng trống trước đây **đã được đóng** bằng (a)
 |---|---|---|---|
 | **P-010** | Prompt-injection / context / load động | ✅ **ĐÃ ĐÓNG (local)** | Dựng full stack local (NestJS + ai-engine + Postgres), **mock LLM OpenAI-compatible** (không key thật). Xác nhận động JWT forge (High), injection gián tiếp, gap bộ lọc `tainted`, XFF reset quota. *Dư:* độ nhạy model THẬT không đo được (LLM mock — đúng như trạng thái deploy). |
 | **P-145** | Injection RAG **đầu-cuối** | ✅ **ĐÃ ĐÓNG (live)** | Tạo employee qua intake → publish doc nhiễm độc → chat. Doc **được retrieve (5 citations)** nhưng không lộ canary/system/tool → **PASS, phòng thủ 5 tầng**. Đã deactivate employee + supersede doc + SQL dọn. *Dư:* không cô lập được 1 lần grounded-LLM thuần (gate biến-động-cao luôn kèm chunk high-vol do corpus nhỏ). |
-| **P-143** | Load/race/rate-limit **động** | ✅ **ĐÃ ĐÓNG (local)** | Docker compose full stack; load 1→50 (0×5xx), race serialize đúng, XXE/billion-laughs FAIL. Mới: FINDING-08 rate-limit/lockout. *Dư:* **injection LLM động** không chạy được — `OPENROUTER_URL` hard-code HTTPS trong `config.py:11` (kiểm soát cố ý, không trỏ stub được) + không có key test. |
+| **P-143** | Load/race/rate-limit + **injection/context/caching động** | ✅ **ĐÃ ĐÓNG (local)** | Docker compose full stack; load 1→50 (0×5xx), race serialize đúng, XXE/billion-laughs FAIL; FINDING-08 rate-limit/lockout. **Injection/context/caching ĐÃ test động** qua **mock LLM in-process** (monkeypatch SDK, không cần key, URL hard-code vô can): FINDING-09 injection đối soát (Medium), context 40KB không cắt, answer-cache theo tenant (tốt), FINDING-01 OCR là code chết. *Dư:* chỉ còn phán quyết model THẬT (xem dưới). |
 | **P-140** | Battery động | ✅ **ĐÃ ĐÓNG (local)** | Dựng local; xác nhận DoS `/api/v1/chat` (Medium). LLM chưa nối ở bản hiện tại → injection/tool chưa có bề mặt (test lại khi nhóm cài logic). |
 | **P-123** | Phán quyết Gemini model **thật** dưới injection | ✅ **ĐÃ QUAN SÁT** | Gemini thật chạy được (dù free-tier chập chờn): model chỉ chuẩn hoá khiếu nại, **không lộ system prompt**. |
 | **P-075, P-143** | Phán quyết VLM/model **thật** dưới injection | ⚠️ **GIỚI HẠN ĐÃ CHẤP NHẬN (mentor chốt 2026-10-13)** | P-075 VLM live chạy `mock`; P-143 OpenRouter URL hard-code HTTPS + không có key → cần **API key trả phí ở staging** (ngoài tầm reviewer). Phòng thủ **QUANH model** (whitelist strip payload / grounding / taint-filter) đã xác nhận — độc lập với model. Mentor chấp nhận đây là giới hạn; xem `USER-DECISIONS.md`. |
